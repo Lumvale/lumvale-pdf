@@ -4,6 +4,18 @@
 
 ---
 
+## 💖 Open Source & Community Support
+
+LumvalePDF is proudly built as an **open-source project** because we believe powerful document tools should be accessible to everyone without violating user privacy. 
+
+However, developing and maintaining a high-quality desktop application takes significant time and resources. If LumvalePDF has saved you time or money, please consider supporting the project! Your contributions directly fund server costs, software licenses (like Code Signing certificates), and ongoing development.
+
+* 🌟 **[Sponsor us on GitHub](https://github.com/sponsors/Lumvale)**
+* ☕ **[Buy us a coffee on Ko-Fi](https://ko-fi.com/lumvale)**
+* 🚀 **[Support us on Patreon](https://patreon.com/lumvale)**
+
+---
+
 ## Table of Contents
 
 1. [Project Architecture](#1-project-architecture-monorepo)
