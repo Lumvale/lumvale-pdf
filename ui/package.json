@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "vite",
     "dev:web": "set BUILD_TARGET=web&& vite",
-    "build": "tsc -b && vite build && electron-builder",
+    "build": "tsc -b && vite build",
     "build:web": "set BUILD_TARGET=web&& tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
