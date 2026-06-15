@@ -1,0 +1,193 @@
+@import "tailwindcss";
+
+@theme {
+  --color-lumvale-bg: var(--theme-bg);
+  --color-lumvale-surface: var(--theme-surface);
+  --color-lumvale-border: var(--theme-border);
+  --color-lumvale-primary: var(--theme-primary);
+  --color-lumvale-accent: var(--theme-accent);
+  --color-lumvale-text: var(--theme-text);
+  --color-lumvale-muted: var(--theme-muted);
+}
+
+@layer base {
+  :root {
+    --theme-bg: #FBFAF6;
+    --theme-surface: #FFFFFF;
+    --theme-border: #ECEAE3;
+    --theme-primary: #15564F;
+    --theme-accent: #C07C18;
+    --theme-text: #15110B;
+    --theme-muted: #6E6A5C;
+  }
+
+  .dark {
+    --theme-bg: #0b0f19;
+    --theme-surface: #131b2c;
+    --theme-border: #6E6A5C;
+    --theme-primary: #4FB89A;
+    --theme-accent: #F1C45E;
+    --theme-text: #FBFAF6;
+    --theme-muted: #A3A095;
+  }
+
+  body {
+    background-color: var(--color-lumvale-bg);
+    color: var(--color-lumvale-text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    margin: 0;
+    overflow-x: hidden;
+  }
+
+  /* Custom Scrollbar for Webkit */
+  ::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-lumvale-bg);
+    border-left: 1px solid var(--color-lumvale-border);
+  }
+  .toolbar-divider {
+  border-left: 1px solid var(--color-lumvale-border);
+  height: 24px;
+  margin: 0 8px;
+}
+
+/* Markdown Preview Styles */
+.markdown-body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+.markdown-body h1, .markdown-body h2 {
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid #eaecef;
+}
+.markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+  margin-top: 24px;
+  margin-bottom: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.markdown-body h1 { font-size: 2em; }
+.markdown-body h2 { font-size: 1.5em; }
+.markdown-body h3 { font-size: 1.25em; }
+.markdown-body h4 { font-size: 1em; }
+.markdown-body h5 { font-size: 0.875em; }
+.markdown-body h6 { font-size: 0.85em; color: #6a737d; }
+.markdown-body p, .markdown-body blockquote, .markdown-body ul, .markdown-body ol, .markdown-body dl, .markdown-body table, .markdown-body pre, .markdown-body details {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+.markdown-body ul, .markdown-body ol {
+  padding-left: 2em;
+}
+.markdown-body ul {
+  list-style-type: disc;
+}
+.markdown-body ul ul {
+  list-style-type: circle;
+}
+.markdown-body ul ul ul {
+  list-style-type: square;
+}
+.markdown-body ol {
+  list-style-type: decimal;
+}
+.markdown-body li {
+  word-wrap: break-all;
+}
+.markdown-body li > p {
+  margin-top: 16px;
+}
+.markdown-body li + li {
+  margin-top: 0.25em;
+}
+.markdown-body code {
+  padding: 0.2em 0.4em;
+  margin: 0;
+  font-size: 85%;
+  background-color: rgba(27,31,35,0.05);
+  border-radius: 3px;
+}
+.markdown-body pre {
+  padding: 16px;
+  overflow: auto;
+  font-size: 85%;
+  line-height: 1.45;
+  background-color: #f6f8fa;
+  border-radius: 3px;
+}
+.markdown-body table {
+  border-spacing: 0;
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+.markdown-body table th {
+  font-weight: 600;
+}
+.markdown-body table th,
+.markdown-body table td {
+  padding: 6px 13px;
+  border: 1px solid #dfe2e5;
+}
+.markdown-body table tr {
+  background-color: #fff;
+  border-top: 1px solid #c6cbd1;
+}
+.markdown-body table tr:nth-child(2n) {
+  background-color: #f6f8fa;
+}
+
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--color-lumvale-muted) 40%, transparent);
+    border-radius: 5px;
+    border: 2px solid var(--color-lumvale-bg);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-lumvale-primary);
+  }
+}
+
+/* Active thumbnail: premium glow ring used for sidebar page sync */
+.thumbnail-active-glow {
+  border-color: var(--color-lumvale-accent) !important;
+  box-shadow:
+    0 0 0 3px var(--color-lumvale-accent),
+    0 0 18px 4px color-mix(in srgb, var(--color-lumvale-accent) 60%, transparent);
+}
+
+.dark .thumbnail-active-glow {
+  border-color: var(--color-lumvale-primary) !important;
+  box-shadow:
+    0 0 0 3px var(--color-lumvale-primary),
+    0 0 18px 4px color-mix(in srgb, var(--color-lumvale-primary) 60%, transparent);
+}
+
+/* Active bookmark: left accent bar + background fill */
+.bookmark-active-row {
+  background-color: color-mix(in srgb, var(--color-lumvale-primary) 15%, transparent);
+  border-left: 3px solid var(--color-lumvale-primary);
+  padding-left: calc(0.5rem - 3px); /* compensate for border so text doesn't shift */
+  color: var(--color-lumvale-primary);
+  font-weight: 600;
+}
+
+/* Dim bookmark: reader has scrolled past this bookmark's target page but
+   hasn't yet reached the next bookmark — keep a subtle visual anchor. */
+.bookmark-dim-row {
+  background-color: color-mix(in srgb, var(--color-lumvale-primary) 6%, transparent);
+  border-left: 3px solid color-mix(in srgb, var(--color-lumvale-primary) 40%, transparent);
+  padding-left: calc(0.5rem - 3px);
+  color: color-mix(in srgb, var(--color-lumvale-text) 70%, transparent);
+}
+
+/* Give each main-canvas page element breathing room from the top so that
+   scrollIntoView({ block:'start' }) doesn't clip the page under the toolbar. */
+.pdf-page-wrapper {
+  scroll-margin-top: 2rem;
+}

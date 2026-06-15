@@ -1,0 +1,19 @@
+{
+  "name": "lumvale-pdf-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lumvale-PDF - Offline, fast, high-quality PDF engine and editor",
+  "workspaces": [
+    "core",
+    "ui"
+  ],
+  "scripts": {
+    "dev:ui": "npm run dev --workspace=ui",
+    "build:ui": "npm run build --workspace=ui",
+    "build:core": "npm run build --workspace=core",
+    "test": "npm run test --workspaces"
+  },
+  "keywords": ["pdf", "wasm", "offline"],
+  "author": "",
+  "license": "Apache-2.0"
+}

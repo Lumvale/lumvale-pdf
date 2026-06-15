@@ -1,0 +1,12 @@
+node_modules/
+dist/
+dist-electron/
+.vscode/
+.DS_Store
+*.local
+ui/public/models/
+ui/release/
+ui/test-results/
+ui/playwright-report/
+*.db
+ui/build/
