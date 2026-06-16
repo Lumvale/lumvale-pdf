@@ -1,18 +1,30 @@
 {
-  "name": "ui",
+  "name": "@lumvalepdf/ui",
   "author": {
     "name": "Lumvale",
     "email": "amir@lumvale.com"
   },
   "homepage": "https://github.com/Lumvale/lumvale-pdf",
-  "description": "Lumvale-PDF Desktop Application",
+  "description": "LumvalePDF desktop application and embeddable workspace UI library",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles.css": "./src/index.css"
+  },
+  "files": [
+    "dist",
+    "src/index.css"
+  ],
   "scripts": {
     "dev": "vite",
     "dev:web": "set BUILD_TARGET=web&& vite",
     "build": "tsc -b && vite build",
+    "build:lib": "tsup",
     "build:web": "set BUILD_TARGET=web&& tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -43,14 +55,19 @@
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.0.227",
     "pptx-preview": "^1.0.7",
-    "react": "^19.0.0-rc.1",
-    "react-dom": "^19.0.0-rc.1",
     "react-markdown": "^10.1.0",
     "tesseract.js": "^7.0.0",
     "xlsx": "^0.18.5"
   },
+  "peerDependencies": {
+    "react": ">=19",
+    "react-dom": ">=19"
+  },
   "main": "dist-electron/main.js",
   "devDependencies": {
+    "react": "^19.0.0-rc.1",
+    "react-dom": "^19.0.0-rc.1",
+    "tsup": "^8.5.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/vite": "^4.3.0",

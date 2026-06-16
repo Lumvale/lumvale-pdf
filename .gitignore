@@ -10,3 +10,5 @@ ui/test-results/
 ui/playwright-report/
 *.db
 ui/build/
+# Local lib tarballs (build artifacts)
+*.tgz
