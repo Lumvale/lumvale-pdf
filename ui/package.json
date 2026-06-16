@@ -6,9 +6,21 @@
   },
   "homepage": "https://github.com/Lumvale/lumvale-pdf",
   "description": "LumvalePDF desktop application and embeddable workspace UI library",
-  "private": true,
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Lumvale/lumvale-pdf.git",
+    "directory": "ui"
+  },
+  "private": false,
   "version": "0.1.0",
   "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -25,6 +37,7 @@
     "dev:web": "set BUILD_TARGET=web&& vite",
     "build": "tsc -b && vite build",
     "build:lib": "tsup",
+    "prepack": "tsup",
     "build:web": "set BUILD_TARGET=web&& tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -37,7 +50,7 @@
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
     "@huggingface/transformers": "^4.2.0",
-    "@lumvalepdf/core": "*",
+    "@lumvalepdf/core": "^1.0.0",
     "@types/jszip": "^3.4.0",
     "docx": "^9.7.1",
     "docx-preview": "^0.3.7",
