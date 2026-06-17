@@ -1,5 +1,5 @@
 {
-  "name": "@lumvalepdf/core",
+  "name": "@lumvale/pdf-core",
   "version": "1.0.0",
   "description": "The WebAssembly-powered PDF engine for LumvalePDF",
   "license": "Apache-2.0",

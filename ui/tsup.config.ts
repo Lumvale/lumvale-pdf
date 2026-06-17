@@ -1,7 +1,7 @@
 import { defineConfig } from "tsup";
 
 /**
- * Library build for @lumvalepdf/ui. Compiles the workspace components to ESM
+ * Library build for @lumvale/pdf-ui. Compiles the workspace components to ESM
  * (class names preserved as string literals so a consumer's Tailwind can scan
  * dist/ and generate the matching utilities). react/react-dom are externalized
  * as peers; all other dependencies stay external and install transitively.
