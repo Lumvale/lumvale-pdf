@@ -2,8 +2,8 @@
  * @lumvale/pdf-ui — the LumvalePDF workspace as a consumable component library.
  *
  * Exposes the desktop-style document workspace (menu bar, toolbar, page
- * sidebar, canvas, and operation modals) so other frontends — e.g. the Lumvale
- * Omnia web SaaS — can embed the same experience instead of reimplementing it.
+ * sidebar, canvas, and operation modals) so other frontends — e.g. a web SaaS —
+ * can embed the same experience instead of reimplementing it.
  * Electron-only behavior in these components is already guarded behind
  * `window.electronAPI?.…`, so they run unchanged on the web.
  *

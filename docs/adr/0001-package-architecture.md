@@ -7,8 +7,8 @@
 ## Context
 
 LumvalePDF is a monorepo published as npm packages and consumed by multiple
-frontends (the Electron desktop app, the Lumvale Omnia web SaaS). It is in its
-initial phase: no external contributors yet, only `@lumvale/pdf-core@1.0.0` and
+frontends (the Electron desktop app and a separate web SaaS that embeds the
+workspace). It is in its initial phase: no external contributors yet, only `@lumvale/pdf-core@1.0.0` and
 `@lumvale/pdf-ui@0.1.0` published. This is the cheapest moment to set structure.
 
 Two forces exposed a structural question:
@@ -113,36 +113,19 @@ Different products register different adapters at their composition root:
   pipeline at zero extra dependency (Chromium already ships in Electron). So OSS
   is not limited to low fidelity: plain-Node consumers get pure-JS; the desktop
   gets Chromium-grade output for free.
-- **Lumvale Omnia (cloud SaaS):** offers conversion as an **explicit, user-visible
-  option**, because the choice has a **privacy tradeoff** (see below):
-  - **"Fast & private"** → in-browser (`pdf-browser`), nothing uploaded.
-  - **"Best fidelity"** → **server-side LibreOffice**. As a cloud product, the
-    ~300–400 MB binary is a non-issue for the image; mind the *execution model*
-    (a container / dedicated conversion service is a more comfortable host for
-    `soffice` than a size/timeout-constrained Lambda).
+- **Downstream consumers** (including proprietary/commercial products) may
+  register their **own** adapter — e.g. a closed, server-side headless engine —
+  with no change to this package. Such adapters are not part of the OSS.
 
-### Privacy tradeoff — DECIDED
+### Note: server-side adapters and privacy
 
-Omnia today converts **in the browser**, which underpins its stated guarantee
-("processing is done in your browser… documents are never sent to a backend
-server"). A LibreOffice backend is **server-side**, so the document **leaves the
-browser**.
-
-**Decision:** Omnia will offer server-side conversion as an **explicit opt-in**
-alongside the private in-browser default — never a silent reroute. The UI must
-make the tradeoff clear (e.g. *"Fast & private"* in-browser vs *"Best fidelity"*
-server-side, with a "processed on our servers" notice).
-
-### Resolved decisions
-
-1. **LibreOffice adapter home → Omnia-private.** The LibreOffice adapter is a
-   closed Omnia adapter implementing the OSS `DocumentConverter` port — a
-   commercial differentiator, not part of the OSS. The OSS ships only the pure-JS
-   default (+ hidden-Chromium for Electron). Omnia invokes `soffice` as a
-   **separate process** (not linked/bundled), keeping its LGPL/MPL at arm's
-   length from commercial code.
-2. **Server-side conversion in Omnia → allowed as an explicit opt-in** (see the
-   Privacy tradeoff decision above).
+The OSS conversion paths run **in the browser / Electron renderer**, so documents
+never leave the device. A **server-side** adapter (e.g. a headless LibreOffice
+backend) necessarily uploads the document to a server. Any product that adopts
+one should treat that as an **explicit, user-visible choice**, not a silent
+reroute. Where such an adapter shells out to a third-party binary (e.g.
+`soffice`), it should run it as a **separate process** rather than
+linking/bundling it, to keep that binary's license at arm's length.
 
 ## Migration phases
 
