@@ -5,12 +5,14 @@
   "description": "Lumvale-PDF - Offline, fast, high-quality PDF engine and editor",
   "workspaces": [
     "core",
+    "browser",
     "ui"
   ],
   "scripts": {
     "dev:ui": "npm run dev --workspace=ui",
     "build:ui": "npm run build --workspace=ui",
     "build:core": "npm run build --workspace=core",
+    "build:browser": "npm run build --workspace=browser",
     "test": "npm run test --workspaces"
   },
   "keywords": ["pdf", "wasm", "offline"],

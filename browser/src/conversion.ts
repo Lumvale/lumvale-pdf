@@ -4,7 +4,6 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { PDFDocument } from 'pdf-lib';
 import { marked } from 'marked';
-import DOMPurify from 'dompurify';
 import { init as initPptx } from 'pptx-preview';
 
 /**

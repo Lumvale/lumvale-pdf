@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { PDFMetadata } from '@lumvalepdf/core';
+import type { PDFMetadata } from '@lumvale/pdf-core';
 
 interface MetadataModalProps {
   initialMetadata: PDFMetadata;
