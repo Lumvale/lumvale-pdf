@@ -1,6 +1,16 @@
 import { PDFDocument, degrees, rgb, PDFName, PDFDict, PDFArray, PDFNumber, PDFString, PDFHexString } from 'pdf-lib';
 import { encryptPDF } from '@pdfsmaller/pdf-encrypt-lite';
 
+// Document-conversion port + registry. The contract lives in core; the
+// environment-specific adapters live in platform packages and are registered by
+// the app at its composition root. See docs/adr/0001-package-architecture.md.
+export {
+  ConverterRegistry,
+  ConversionError,
+  type ConversionInput,
+  type DocumentConverter,
+} from './conversion';
+
 export interface PDFMetadata {
   title?: string;
   author?: string;
