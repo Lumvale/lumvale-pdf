@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LumvalePDFEngine } from '@lumvalepdf/core';
+import { LumvalePDFEngine } from '@lumvale/pdf-core';
 import JSZip from 'jszip';
 import { X } from 'lucide-react';
 

@@ -3,7 +3,7 @@ import { render } from '@testing-library/react';
 import Workspace from './Workspace';
 
 // Mock large dependencies
-vi.mock('@lumvalepdf/core', () => ({
+vi.mock('@lumvale/pdf-core', () => ({
   LumvalePDFEngine: vi.fn().mockImplementation(() => ({
     loadDocument: vi.fn(),
     exportBytes: vi.fn(),

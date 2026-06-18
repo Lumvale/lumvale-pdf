@@ -1,18 +1,43 @@
 {
-  "name": "ui",
+  "name": "@lumvale/pdf-ui",
   "author": {
     "name": "Lumvale",
     "email": "amir@lumvale.com"
   },
   "homepage": "https://github.com/Lumvale/lumvale-pdf",
-  "description": "Lumvale-PDF Desktop Application",
-  "private": true,
-  "version": "0.0.0",
+  "description": "LumvalePDF desktop application and embeddable workspace UI library",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Lumvale/lumvale-pdf.git",
+    "directory": "ui"
+  },
+  "private": false,
+  "version": "0.2.0",
   "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles.css": "./src/index.css"
+  },
+  "files": [
+    "dist",
+    "src/index.css"
+  ],
   "scripts": {
     "dev": "vite",
     "dev:web": "set BUILD_TARGET=web&& vite",
     "build": "tsc -b && vite build",
+    "build:lib": "tsup",
+    "prepack": "tsup",
     "build:web": "set BUILD_TARGET=web&& tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -25,32 +50,32 @@
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
     "@huggingface/transformers": "^4.2.0",
-    "@lumvalepdf/core": "*",
+    "@lumvale/pdf-browser": "^0.1.0",
+    "@lumvale/pdf-core": "^1.1.0",
     "@types/jszip": "^3.4.0",
     "docx": "^9.7.1",
-    "docx-preview": "^0.3.7",
     "electron-squirrel-startup": "^1.0.1",
     "electron-updater": "^6.8.9",
     "framer-motion": "^12.40.0",
-    "html2canvas": "^1.4.1",
     "idb-keyval": "^6.2.5",
-    "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "lodash": "^4.18.1",
     "lucide-react": "^1.18.0",
     "mammoth": "^1.12.0",
-    "marked": "^18.0.5",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.0.227",
-    "pptx-preview": "^1.0.7",
-    "react": "^19.0.0-rc.1",
-    "react-dom": "^19.0.0-rc.1",
     "react-markdown": "^10.1.0",
-    "tesseract.js": "^7.0.0",
-    "xlsx": "^0.18.5"
+    "tesseract.js": "^7.0.0"
+  },
+  "peerDependencies": {
+    "react": ">=19",
+    "react-dom": ">=19"
   },
   "main": "dist-electron/main.js",
   "devDependencies": {
+    "react": "^19.0.0-rc.1",
+    "react-dom": "^19.0.0-rc.1",
+    "tsup": "^8.5.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/vite": "^4.3.0",

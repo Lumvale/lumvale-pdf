@@ -19,16 +19,26 @@ jobs:
         node-version: 20
         cache: 'npm'
 
+    # Workspace-aware install from the repo root so the local packages
+    # (@lumvale/pdf-core, @lumvale/pdf-browser) link instead of resolving from
+    # the registry.
     - name: Install Dependencies
-      run: |
-        cd core && npm install
-        cd ../ui && npm install
+      run: npm install
 
-    - name: Build Core Engine
-      run: cd core && npm run build
+    # Build in dependency order: core -> browser, since ui's tsc needs the
+    # browser package's emitted types.
+    - name: Build packages (core, browser)
+      run: |
+        npm run build --workspace=core
+        npm run build --workspace=browser
+
+    - name: Unit tests (core, browser)
+      run: |
+        npm run test --workspace=core
+        npm run test --workspace=browser
 
     - name: Build UI
-      run: cd ui && npm run build
+      run: npm run build --workspace=ui
 
     - name: Install Playwright Browsers
       run: cd ui && npx playwright install --with-deps
