@@ -13,7 +13,7 @@
     "directory": "ui"
   },
   "private": false,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "sideEffects": [
     "**/*.css"
@@ -50,27 +50,22 @@
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
     "@huggingface/transformers": "^4.2.0",
-    "@lumvale/pdf-core": "^1.0.0",
+    "@lumvale/pdf-browser": "^0.1.0",
+    "@lumvale/pdf-core": "^1.1.0",
     "@types/jszip": "^3.4.0",
     "docx": "^9.7.1",
-    "docx-preview": "^0.3.7",
     "electron-squirrel-startup": "^1.0.1",
     "electron-updater": "^6.8.9",
     "framer-motion": "^12.40.0",
-    "html2canvas": "^1.4.1",
     "idb-keyval": "^6.2.5",
-    "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "lodash": "^4.18.1",
     "lucide-react": "^1.18.0",
     "mammoth": "^1.12.0",
-    "marked": "^18.0.5",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.0.227",
-    "pptx-preview": "^1.0.7",
     "react-markdown": "^10.1.0",
-    "tesseract.js": "^7.0.0",
-    "xlsx": "^0.18.5"
+    "tesseract.js": "^7.0.0"
   },
   "peerDependencies": {
     "react": ">=19",

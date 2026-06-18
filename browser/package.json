@@ -1,0 +1,50 @@
+{
+  "name": "@lumvale/pdf-browser",
+  "version": "0.1.0",
+  "description": "Browser-platform document functionality for LumvalePDF (Office/Markdown/image → PDF conversion via the DOM).",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/Lumvale/lumvale-pdf",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Lumvale/lumvale-pdf.git",
+    "directory": "browser"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "prepack": "tsup"
+  },
+  "dependencies": {
+    "@lumvale/pdf-core": "^1.1.0",
+    "docx-preview": "^0.3.7",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
+    "marked": "^18.0.5",
+    "pdf-lib": "^1.17.1",
+    "pptx-preview": "^1.0.7",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
+}

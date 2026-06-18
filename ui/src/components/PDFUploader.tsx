@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { UploadCloud } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { LumvalePDFEngine } from '@lumvale/pdf-core';
-import { convertWordToPDF, convertExcelToPDF, convertMarkdownToPDF, convertImageToPDF, convertPPTXToPDF, mergePDFs } from '../utils/conversion';
+import { convertWordToPDF, convertExcelToPDF, convertMarkdownToPDF, convertImageToPDF, convertPPTXToPDF, mergePDFs } from '@lumvale/pdf-browser';
 import { Loader2 } from 'lucide-react';
 
 interface PDFUploaderProps {
