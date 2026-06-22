@@ -1,11 +1,13 @@
 @echo off
-echo Building Lumvale-PDF Core...
-cd core
+echo Installing monorepo dependencies...
 call npm install
-call npm run build
 
-echo Starting Lumvale-PDF UI...
-cd ../ui
-call npm install
-call npm run dev
+echo Building Lumvale-PDF Core...
+call npm run build:core
+
+echo Building Lumvale-PDF UI...
+call npm run build:ui
+
+echo Starting Lumvale-PDF...
+call npm run start:ui
 pause
