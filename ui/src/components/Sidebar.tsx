@@ -86,7 +86,6 @@ export default function Sidebar({
                       }}
                     >
                       <motion.div
-                        layout
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ 
                           opacity: 1, 
@@ -156,11 +155,12 @@ export default function Sidebar({
                         )}
                         {/* Thumbnail */}
                         <div className="aspect-[1/1.4] w-full bg-white rounded flex items-center justify-center shadow-inner relative overflow-hidden pointer-events-none p-1">
-                          <PDFCanvas 
-                            documentBytes={documentBytes} 
-                            pageNumber={pageNum} 
-                            scale={0.3} 
-                            className="w-full h-full [&>canvas]:w-full [&>canvas]:h-full [&>canvas]:object-contain shadow-none" 
+                          <PDFCanvas
+                            documentBytes={documentBytes}
+                            pageNumber={pageNum}
+                            scale={0.3}
+                            renderPriority="low"
+                            className="w-full h-full [&>canvas]:w-full [&>canvas]:h-full [&>canvas]:object-contain shadow-none"
                           />
                           <div className="absolute inset-0 border border-black/10 rounded"></div>
                         </div>
