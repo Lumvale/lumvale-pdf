@@ -1,3 +1,4 @@
+import './devPerfPatch' // must run before react-dom is imported
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
