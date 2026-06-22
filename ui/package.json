@@ -33,8 +33,9 @@
     "src/index.css"
   ],
   "scripts": {
-    "dev": "vite",
-    "dev:web": "set BUILD_TARGET=web&& vite",
+    "dev": "vite --force",
+    "dev:web": "set BUILD_TARGET=web&& vite --force",
+    "start": "electron .",
     "build": "tsc -b && vite build",
     "build:lib": "tsup",
     "prepack": "tsup",
