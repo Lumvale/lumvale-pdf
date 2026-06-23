@@ -11,6 +11,7 @@
   "scripts": {
     "dev:ui": "npm run dev --workspace=ui",
     "build:ui": "npm run build --workspace=ui",
+    "start:ui": "npm run start --workspace=ui",
     "build:core": "npm run build --workspace=core",
     "build:browser": "npm run build --workspace=browser",
     "test": "npm run test --workspaces"

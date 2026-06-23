@@ -1,11 +1,14 @@
 #!/bin/bash
 cd "$(dirname "$0")"
-echo "Building Lumvale-PDF Core..."
-cd core
-npm install
-npm run build
 
-echo "Starting Lumvale-PDF UI..."
-cd ../ui
+echo "Installing monorepo dependencies..."
 npm install
-npm run dev
+
+echo "Building Lumvale-PDF Core..."
+npm run build:core
+
+echo "Building Lumvale-PDF UI..."
+npm run build:ui
+
+echo "Starting Lumvale-PDF..."
+npm run start:ui
