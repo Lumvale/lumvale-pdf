@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, startTransition } from 'react';
 import { motion } from 'framer-motion';
 import Sidebar from './Sidebar';
 import PDFCanvas from './PDFCanvas';
@@ -10,6 +10,8 @@ import MetadataModal from './MetadataModal';
 import EncryptionModal from './EncryptionModal';
 import SplitModal from './SplitModal';
 import WatermarkModal from './WatermarkModal';
+import BatesModal from './BatesModal';
+import HeaderFooterModal from './HeaderFooterModal';
 import OrganizerGrid from './OrganizerGrid';
 import TopBar from './TopBar';
 import Toolbar from './Toolbar';
@@ -18,6 +20,62 @@ import { LayoutGrid, Bookmark } from 'lucide-react';
 import SaveModal from './SaveModal';
 import AnnotationToolbar from './AnnotationToolbar';
 import type { Annotation, AnnotationType } from './AnnotationOverlay';
+import PdfWorker from '../workers/pdf.worker?worker';
+
+/** How many pages on each side of the current page keep a live PDFCanvas
+ *  mounted in the main viewer. Pages outside this window render a placeholder.
+ *  Large enough to cover a tall viewport plus a scroll buffer in both
+ *  directions; small enough that editing/re-rendering stays cheap. */
+const MAIN_VIEWER_WINDOW = 6;
+
+let sharedWorker: Worker | null = null;
+const workerCallbacks = new Map<string, { resolve: Function, reject: Function, onProgress?: (msg: string) => void }>();
+
+const getWorker = () => {
+  if (!sharedWorker) {
+    sharedWorker = new PdfWorker();
+    sharedWorker.onmessage = (e) => {
+      // Worker message received
+      const { id, success, resultBytes, error, progress } = e.data;
+      const cb = workerCallbacks.get(id);
+      if (cb) {
+        if (progress) {
+          if (cb.onProgress) cb.onProgress(progress);
+        } else {
+          workerCallbacks.delete(id);
+          if (success) {
+            cb.resolve(resultBytes);
+          } else {
+            cb.reject(new Error(error));
+          }
+        }
+      }
+    };
+    sharedWorker.onerror = (err) => {
+      console.error('Worker error:', err);
+      // If the worker crashes, reject all pending jobs to unfreeze UI
+      workerCallbacks.forEach(cb => cb.reject(new Error('Worker crashed. Document might be too complex or large.')));
+      workerCallbacks.clear();
+      sharedWorker?.terminate();
+      sharedWorker = null; // Respawn on next action
+    };
+  }
+  return sharedWorker;
+};
+
+const runWorker = (action: string, payload: any, onProgress?: (msg: string) => void): Promise<Uint8Array> => {
+  return new Promise((resolve, reject) => {
+    const worker = getWorker();
+    const id = Math.random().toString(36);
+    workerCallbacks.set(id, { resolve, reject, onProgress });
+    
+    // Explicitly clone the documentBytes buffer to avoid extremely slow structured cloning on some browsers
+    const clonedBuffer = payload.documentBytes.slice().buffer;
+    const newPayload = { ...payload, documentBytes: new Uint8Array(clonedBuffer) };
+    
+    worker.postMessage({ id, action, payload: newPayload }, [clonedBuffer]);
+  });
+};
 
 
 interface WorkspaceProps {
@@ -46,6 +104,13 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
   const [activeSidebarTab, setActiveSidebarTab] = useState<'thumbnails' | 'bookmarks'>('thumbnails');
   const [viewMode, setViewMode] = useState<'document' | 'organizer'>('document');
   const [zoom, setZoom] = useState(1.5);
+  /** Intrinsic page size in PDF points, learned from the first rendered page.
+   *  Used to size placeholders for pages outside the virtualization window so
+   *  the scroll height stays stable. Defaults to US Letter. */
+  const [pageBaseSize, setPageBaseSize] = useState({ w: 612, h: 792 });
+  const handleRenderedSize = useCallback((w: number, h: number) => {
+    setPageBaseSize(prev => (Math.abs(prev.w - w) < 1 && Math.abs(prev.h - h) < 1) ? prev : { w, h });
+  }, []);
   const [isEditMode, setIsEditMode] = useState(false);
   const [annotateMode, setAnnotateMode] = useState(false);
   const [activeAnnotationTool, setActiveAnnotationTool] = useState<AnnotationType | null>(null);
@@ -84,11 +149,10 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
     setPageOrder(Array.from({ length: pageCount }, (_, i) => i + 1));
   }, [pageCount]);
 
-  useEffect(() => {
-    if (pageOrder.length > 0) {
-      setCurrentPage(1);
-    }
-  }, [documentBytes]);
+  // Keep a ref so the IntersectionObserver callback always has the latest currentPage
+  // without needing to be in its dependency array (which would rebuild the observer on every scroll)
+  const currentPageRef = useRef(currentPage);
+  useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -109,7 +173,7 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
           }
         });
 
-        if (visiblePage !== -1 && visiblePage !== currentPage) {
+        if (visiblePage !== -1 && visiblePage !== currentPageRef.current) {
           setCurrentPage(visiblePage);
         }
       },
@@ -133,7 +197,7 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
       clearTimeout(to);
       observer.disconnect();
     };
-  }, [pageOrder, currentPage]);
+  }, [pageOrder]);
 
   const downloadPdf = (bytes: Uint8Array) => {
     const blob = new Blob([bytes as any], { type: 'application/pdf' });
@@ -251,27 +315,56 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
 
   const [showSplitModal, setShowSplitModal] = useState(false);
   const [showWatermarkModal, setShowWatermarkModal] = useState(false);
+  const [showBatesModal, setShowBatesModal] = useState(false);
+  const [showHeaderFooterModal, setShowHeaderFooterModal] = useState(false);
 
   const handleApplyWatermark = async (options: any) => {
     try {
-      const engine = new LumvalePDFEngine();
-      await engine.loadDocument(documentBytes);
-      engine.addWatermark(options);
-      const newBytes = await engine.exportBytes();
-      
-      setDocumentBytes(newBytes);
+      const newBytes = await runWorker('watermark', { documentBytes, options });
       setShowWatermarkModal(false);
+      requestAnimationFrame(() => {
+        startTransition(() => setDocumentBytes(newBytes));
+      });
     } catch (err) {
       console.error(err);
       alert('Failed to apply watermark.');
     }
   };
 
+  const handleApplyBates = async (options: any, onProgress?: (msg: string) => void) => {
+    try {
+      const newBytes = await runWorker('bates', { documentBytes, options }, onProgress);
+      // Close the modal immediately (high-priority update)
+      setShowBatesModal(false);
+      // Yield to the browser so the modal removal paints, THEN update the bytes
+      // in a low-priority transition so the UI stays responsive during re-render.
+      requestAnimationFrame(() => {
+        startTransition(() => {
+          setDocumentBytes(newBytes);
+        });
+      });
+    } catch (err) {
+      console.error('Failed to apply page numbering:', err);
+      alert('Failed to apply page numbering.');
+    }
+  };
+
+  const handleApplyHeadersFooters = async (options: any) => {
+    try {
+      const newBytes = await runWorker('headersFooters', { documentBytes, options });
+      setShowHeaderFooterModal(false);
+      requestAnimationFrame(() => {
+        startTransition(() => setDocumentBytes(newBytes));
+      });
+    } catch (err) {
+      console.error(err);
+      alert('Failed to apply headers and footers.');
+    }
+  };
+
   const handleEncryptDocument = async (userPassword?: string, ownerPassword?: string) => {
     try {
-      const engine = new LumvalePDFEngine();
-      await engine.loadDocument(documentBytes);
-      const encryptedBytes = await engine.exportEncryptedBytes(userPassword, ownerPassword);
+      const encryptedBytes = await runWorker('encrypt', { documentBytes, userPassword, ownerPassword });
       
       const blob = new Blob([encryptedBytes as any], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
@@ -309,11 +402,7 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
     try {
       const originalSize = documentBytes.byteLength;
       
-      const engine = new LumvalePDFEngine();
-      await engine.loadDocument(documentBytes);
-      await engine.compressDocument();
-      
-      const compressedBytes = await engine.exportBytes();
+      const compressedBytes = await runWorker('compress', { documentBytes });
       const compressedSize = compressedBytes.byteLength;
       
       setDocumentBytes(compressedBytes);
@@ -439,6 +528,7 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
     );
   }
 
+
   return (
     <div className="flex flex-col h-screen w-full bg-vault-bg overflow-hidden text-vault-text relative z-0">
       {/* Static Background Orbs */}
@@ -476,6 +566,22 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
         />
       )}
 
+      {showBatesModal && (
+        <BatesModal
+          pageCount={pageCount}
+          onApply={handleApplyBates}
+          onClose={() => setShowBatesModal(false)}
+        />
+      )}
+
+      {showHeaderFooterModal && (
+        <HeaderFooterModal
+          pageCount={pageCount}
+          onApply={handleApplyHeadersFooters}
+          onClose={() => setShowHeaderFooterModal(false)}
+        />
+      )}
+
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -508,6 +614,8 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
           onSplit={() => setShowSplitModal(true)}
           onCompress={handleCompress}
           onWatermark={() => setShowWatermarkModal(true)}
+          onBates={() => setShowBatesModal(true)}
+          onHeadersFooters={() => setShowHeaderFooterModal(true)}
           isCompressing={isCompressing}
           onMetadata={handleOpenMetadata}
           onEncrypt={() => setShowEncryption(true)}
@@ -723,20 +831,41 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
                 id="main-scroll-container"
               >
                 <div className="min-h-full w-full flex flex-col items-center p-8 space-y-8">
-                  {pageOrder.map((pageNum, idx) => (
-                    <div key={`main-page-${pageNum}`} id={`pdf-page-${idx + 1}`} className="flex justify-center pdf-page-wrapper">
-                      <PDFCanvas 
-                        documentBytes={documentBytes} 
-                        pageNumber={pageNum} 
-                        scale={zoom}
-                        activeAnnotationTool={annotateMode ? activeAnnotationTool : null}
-                        activeAnnotationColor={activeAnnotationColor}
-                        activeAnnotationStrokeWidth={activeAnnotationStrokeWidth}
-                        annotations={annotations}
-                        onAnnotationsChange={setAnnotations}
-                      />
-                    </div>
-                  ))}
+                  {pageOrder.map((pageNum, idx) => {
+                    // Virtualization: only mount the (heavy) PDFCanvas for pages
+                    // near the page the user is looking at. Off-window pages keep
+                    // their wrapper (so scroll height, the current-page observer,
+                    // and scroll-to-page all keep working) but render a cheap
+                    // placeholder sized to the real page. This keeps the mounted
+                    // canvas count to ~2*WINDOW+1 instead of the whole document,
+                    // which is what made applying edits (and dev-mode renders)
+                    // crawl on large files.
+                    const shouldMount = Math.abs((idx + 1) - currentPage) <= MAIN_VIEWER_WINDOW;
+                    return (
+                      <div key={`main-page-${pageNum}`} id={`pdf-page-${idx + 1}`} className="flex justify-center pdf-page-wrapper">
+                        {shouldMount ? (
+                          <PDFCanvas
+                            documentBytes={documentBytes}
+                            pageNumber={pageNum}
+                            scale={zoom}
+                            activeAnnotationTool={annotateMode ? activeAnnotationTool : null}
+                            activeAnnotationColor={activeAnnotationColor}
+                            activeAnnotationStrokeWidth={activeAnnotationStrokeWidth}
+                            annotations={annotations}
+                            onAnnotationsChange={setAnnotations}
+                            onRenderedSize={handleRenderedSize}
+                            placeholderWidth={pageBaseSize.w * zoom}
+                            placeholderHeight={pageBaseSize.h * zoom}
+                          />
+                        ) : (
+                          <div
+                            className="relative shadow-2xl bg-white"
+                            style={{ width: pageBaseSize.w * zoom, height: pageBaseSize.h * zoom, maxWidth: '100%' }}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </>

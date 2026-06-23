@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 release/
+
+# Generated on demand by tests/global-setup.ts; never commit (large, non-personal raster fixture)
+tests/fixtures/demo-heavy.pdf

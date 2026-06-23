@@ -1,4 +1,4 @@
-import { PDFDocument, degrees, rgb, PDFName, PDFDict, PDFArray, PDFNumber, PDFString, PDFHexString } from 'pdf-lib';
+import { PDFDocument, degrees, rgb, PDFName, PDFDict, PDFArray, PDFNumber, PDFString, PDFHexString, StandardFonts } from 'pdf-lib';
 import { encryptPDF } from '@pdfsmaller/pdf-encrypt-lite';
 
 // Document-conversion port + registry. The contract lives in core; the
@@ -103,7 +103,7 @@ export class LumvalePDFEngine {
   /**
    * Add a text watermark to specific pages or all pages.
    */
-  public addWatermark(options: { 
+  public async addWatermark(options: { 
     text: string, 
     fontSize: number, 
     opacity: number, 
@@ -121,24 +121,199 @@ export class LumvalePDFEngine {
     
     const pages = this.pdfDoc.getPages();
     const indicesToWatermark = pageIndices || pages.map((_, i) => i);
+    
+    const font = await this.pdfDoc.embedFont(StandardFonts.Helvetica);
 
     for (const index of indicesToWatermark) {
       if (index >= 0 && index < pages.length) {
         const page = pages[index];
         const { width, height } = page.getSize();
         
-        // Rough centering. Actual text width requires font embedding and measurement,
-        // but an approximation works fine for simple watermarks.
-        const approxTextWidth = (text.length * fontSize) * 0.5;
+        const textWidth = font.widthOfTextAtSize(text, fontSize);
         
         page.drawText(text, {
-          x: width / 2 - approxTextWidth / 2,
+          x: width / 2 - textWidth / 2,
           y: height / 2 - fontSize / 2,
           size: fontSize,
+          font: font,
           color: rgb(r, g, b),
           opacity: opacity,
           rotate: degrees(angle),
         });
+      }
+    }
+  }
+
+  /**
+   * Add Bates Numbering to specific pages or all pages.
+   */
+  public async addBatesNumbering(options: { 
+    prefix?: string,
+    suffix?: string,
+    startNumber: number,
+    numberOfDigits: number,
+    fontSize: number, 
+    colorHex: string, 
+    position?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right',
+    marginX?: number,
+    marginY?: number,
+    pageIndices?: number[] 
+  }) {
+    if (!this.pdfDoc) throw new Error("No document loaded");
+    const { prefix = "", suffix = "", startNumber, numberOfDigits, fontSize, colorHex, position = 'bottom-right', marginX = 30, marginY = 30, pageIndices } = options;
+    
+    // Parse hex color
+    const r = parseInt(colorHex.slice(1, 3), 16) / 255;
+    const g = parseInt(colorHex.slice(3, 5), 16) / 255;
+    const b = parseInt(colorHex.slice(5, 7), 16) / 255;
+    
+    const pages = this.pdfDoc.getPages();
+    const indicesToBates = pageIndices || pages.map((_, i) => i);
+    
+    const font = await this.pdfDoc.embedFont(StandardFonts.Helvetica);
+
+    let currentNumber = startNumber;
+
+    for (const index of indicesToBates) {
+      if (index >= 0 && index < pages.length) {
+        const page = pages[index];
+        const numStr = String(currentNumber).padStart(numberOfDigits, '0');
+        const text = `${prefix}${numStr}${suffix}`;
+        
+        const { width, height } = page.getSize();
+        const textWidth = font.widthOfTextAtSize(text, fontSize);
+        
+        let drawX = marginX;
+        let drawY = marginY;
+
+        if (position === 'bottom-left') {
+          drawX = marginX;
+          drawY = marginY;
+        } else if (position === 'bottom-center') {
+          drawX = (width / 2) - (textWidth / 2);
+          drawY = marginY;
+        } else if (position === 'bottom-right') {
+          drawX = width - marginX - textWidth;
+          drawY = marginY;
+        } else if (position === 'top-left') {
+          drawX = marginX;
+          drawY = height - marginY - fontSize;
+        } else if (position === 'top-center') {
+          drawX = (width / 2) - (textWidth / 2);
+          drawY = height - marginY - fontSize;
+        } else if (position === 'top-right') {
+          drawX = width - marginX - textWidth;
+          drawY = height - marginY - fontSize;
+        }
+        
+        page.drawText(text, {
+          x: drawX,
+          y: drawY,
+          size: fontSize,
+          font: font,
+          color: rgb(r, g, b),
+        });
+        currentNumber++;
+      }
+    }
+  }
+
+  /**
+   * Add headers and footers with dynamic tokens.
+   */
+  public async addHeadersFooters(options: {
+    headerLeft?: string;
+    headerCenter?: string;
+    headerRight?: string;
+    footerLeft?: string;
+    footerCenter?: string;
+    footerRight?: string;
+    fontSize: number;
+    colorHex: string;
+    marginTop?: number;
+    marginBottom?: number;
+    marginLeft?: number;
+    marginRight?: number;
+    pageIndices?: number[];
+  }) {
+    if (!this.pdfDoc) throw new Error("No document loaded");
+    const { 
+      headerLeft = '', headerCenter = '', headerRight = '', 
+      footerLeft = '', footerCenter = '', footerRight = '', 
+      fontSize, colorHex, 
+      marginTop = 30, marginBottom = 30, marginLeft = 30, marginRight = 30, 
+      pageIndices 
+    } = options;
+    
+    const r = parseInt(colorHex.slice(1, 3), 16) / 255;
+    const g = parseInt(colorHex.slice(3, 5), 16) / 255;
+    const b = parseInt(colorHex.slice(5, 7), 16) / 255;
+    
+    const pages = this.pdfDoc.getPages();
+    const indicesToApply = pageIndices || pages.map((_, i) => i);
+    const totalPages = pages.length;
+    
+    const font = await this.pdfDoc.embedFont(StandardFonts.Helvetica);
+
+    const replaceTokens = (text: string, pageNum: number, total: number) => {
+      const now = new Date();
+      return text
+        .replace(/{pageNumber}/g, String(pageNum))
+        .replace(/{totalPages}/g, String(total))
+        .replace(/{date}/g, now.toLocaleDateString());
+    };
+
+    for (const index of indicesToApply) {
+      if (index >= 0 && index < totalPages) {
+        const page = pages[index];
+        const { width, height } = page.getSize();
+        const pageNumber = index + 1;
+        
+        const drawOpts = {
+          size: fontSize,
+          font: font,
+          color: rgb(r, g, b),
+        };
+
+        if (headerLeft) {
+          page.drawText(replaceTokens(headerLeft, pageNumber, totalPages), {
+            ...drawOpts, x: marginLeft, y: height - marginTop
+          });
+        }
+        if (headerCenter) {
+          const text = replaceTokens(headerCenter, pageNumber, totalPages);
+          const textWidth = font.widthOfTextAtSize(text, fontSize);
+          page.drawText(text, {
+            ...drawOpts, x: (width / 2) - (textWidth / 2), y: height - marginTop
+          });
+        }
+        if (headerRight) {
+          const text = replaceTokens(headerRight, pageNumber, totalPages);
+          const textWidth = font.widthOfTextAtSize(text, fontSize);
+          page.drawText(text, {
+            ...drawOpts, x: width - marginRight - textWidth, y: height - marginTop
+          });
+        }
+
+        if (footerLeft) {
+          page.drawText(replaceTokens(footerLeft, pageNumber, totalPages), {
+            ...drawOpts, x: marginLeft, y: marginBottom
+          });
+        }
+        if (footerCenter) {
+          const text = replaceTokens(footerCenter, pageNumber, totalPages);
+          const textWidth = font.widthOfTextAtSize(text, fontSize);
+          page.drawText(text, {
+            ...drawOpts, x: (width / 2) - (textWidth / 2), y: marginBottom
+          });
+        }
+        if (footerRight) {
+          const text = replaceTokens(footerRight, pageNumber, totalPages);
+          const textWidth = font.widthOfTextAtSize(text, fontSize);
+          page.drawText(text, {
+            ...drawOpts, x: width - marginRight - textWidth, y: marginBottom
+          });
+        }
       }
     }
   }
@@ -347,7 +522,8 @@ export class LumvalePDFEngine {
    * Load an existing PDF document from bytes
    */
   public async loadDocument(bytes: Uint8Array) {
-    this.pdfDoc = await PDFDocument.load(bytes);
+    // parseSpeed: Infinity prevents yielding during load
+    this.pdfDoc = await PDFDocument.load(bytes, { parseSpeed: Infinity });
     return this.pdfDoc;
   }
 
@@ -356,7 +532,7 @@ export class LumvalePDFEngine {
    */
   public async mergeWith(otherBytes: Uint8Array) {
     if (!this.pdfDoc) throw new Error("No primary document loaded");
-    const otherDoc = await PDFDocument.load(otherBytes);
+    const otherDoc = await PDFDocument.load(otherBytes, { parseSpeed: Infinity });
     const copiedPages = await this.pdfDoc.copyPages(otherDoc, otherDoc.getPageIndices());
     copiedPages.forEach((page) => this.pdfDoc!.addPage(page));
     return this.pdfDoc;
@@ -387,7 +563,7 @@ export class LumvalePDFEngine {
     for (const item of sequence) {
       let sourceDoc = parsedDocs.get(item.docBytes);
       if (!sourceDoc) {
-        sourceDoc = await PDFDocument.load(item.docBytes);
+        sourceDoc = await PDFDocument.load(item.docBytes, { parseSpeed: Infinity });
         parsedDocs.set(item.docBytes, sourceDoc);
       }
       
@@ -412,11 +588,11 @@ export class LumvalePDFEngine {
   }
 
   /**
-   * Export the current document to a byte array
+   * Serializes the document back into a byte array.
    */
   public async exportBytes(): Promise<Uint8Array> {
     if (!this.pdfDoc) throw new Error("No document loaded");
-    return await this.pdfDoc.save({ useObjectStreams: true });
+    return await this.pdfDoc.save({ useObjectStreams: false, objectsPerTick: Infinity });
   }
 
   /**
@@ -427,7 +603,7 @@ export class LumvalePDFEngine {
     
     // First, save the unencrypted bytes with object streams disabled.
     // pdf-encrypt-lite requires object streams to be off to encrypt properly.
-    const unencryptedBytes = await this.pdfDoc.save({ useObjectStreams: false });
+    const unencryptedBytes = await this.pdfDoc.save({ useObjectStreams: false, objectsPerTick: Infinity });
     
     // Encrypt the bytes
     const encryptedBytes = await encryptPDF(

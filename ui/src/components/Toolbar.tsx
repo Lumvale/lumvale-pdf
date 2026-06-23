@@ -1,4 +1,4 @@
-import { PanelLeft, Files, Scissors, SplitSquareHorizontal, Minimize, Info, Lock, Download, ZoomIn, ZoomOut, Pencil, Eye, LayoutGrid } from 'lucide-react';
+import { PanelLeft, Files, Scissors, SplitSquareHorizontal, Minimize, Info, Lock, Download, ZoomIn, ZoomOut, Pencil, Eye, LayoutGrid, FileDigit, PanelTop } from 'lucide-react';
 
 interface ToolbarProps {
   showSidebar: boolean;
@@ -10,6 +10,8 @@ interface ToolbarProps {
   onSplit: () => void;
   onCompress: () => void;
   onWatermark: () => void;
+  onBates: () => void;
+  onHeadersFooters: () => void;
   isCompressing: boolean;
   onMetadata: () => void;
   onEncrypt: () => void;
@@ -34,6 +36,8 @@ export default function Toolbar({
   onSplit,
   onCompress,
   onWatermark,
+  onBates,
+  onHeadersFooters,
   isCompressing,
   onMetadata,
   onEncrypt,
@@ -92,6 +96,22 @@ export default function Toolbar({
             title="Compress / Optimize"
           >
             <Minimize size={18} />
+          </button>
+
+          <button 
+            onClick={onBates}
+            className="p-1.5 rounded transition-colors text-vault-muted hover:bg-vault-border hover:text-white flex items-center gap-1.5"
+            title="Page Numbering"
+          >
+            <FileDigit size={18} />
+          </button>
+
+          <button 
+            onClick={onHeadersFooters}
+            className="p-1.5 rounded transition-colors text-vault-muted hover:bg-vault-border hover:text-white flex items-center gap-1.5"
+            title="Headers & Footers"
+          >
+            <PanelTop size={18} />
           </button>
 
           <button 

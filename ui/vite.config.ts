@@ -26,6 +26,7 @@ export default defineConfig({
       })
     ] : []),
     VitePWA({
+      disable: process.env.NODE_ENV !== 'production',
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
@@ -85,12 +86,24 @@ export default defineConfig({
     })
   ],
   optimizeDeps: {
+    include: [
+      'pdfjs-dist/legacy/build/pdf.mjs',
+      'pdfjs-dist/legacy/build/pdf.worker.mjs'
+    ],
     exclude: ['@huggingface/transformers']
   },
   server: {
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Cross-Origin-Embedder-Policy': 'require-corp',
+    },
+    watch: {
+      ignored: [
+        '**/test-results/**',
+        '**/tests/**',
+        '**/playwright-report/**',
+        '**/playwright/**'
+      ]
     }
   }
 })

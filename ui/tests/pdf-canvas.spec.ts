@@ -28,8 +28,19 @@ test.describe('High-DPI (Retina) Canvas Rendering', () => {
     // Get the first PDF canvas
     const canvas = page.locator('#pdf-page-1 canvas').first();
 
-    // Ensure the canvas has fully rendered its content by waiting for inline styles
-    await expect(canvas).toHaveAttribute('style', /width:/);
+    // Ensure the canvas has fully rendered by waiting for non-zero dimensions AND inline style
+    await expect(async () => {
+      const info = await canvas.evaluate((el: HTMLCanvasElement) => ({
+        w: el.width,
+        h: el.height,
+        sw: el.style.width,
+        sh: el.style.height
+      }));
+      expect(info.w).toBeGreaterThan(0);
+      expect(info.h).toBeGreaterThan(0);
+      expect(info.sw).toContain('px');
+      expect(info.sh).toContain('px');
+    }).toPass({ timeout: 10000 });
 
     // Read the canvas HTML attributes and inline styles
     const pixelRatio = await page.evaluate(() => window.devicePixelRatio);
@@ -38,17 +49,17 @@ test.describe('High-DPI (Retina) Canvas Rendering', () => {
     expect(pixelRatio).toBe(2);
 
     const canvasDimensions = await canvas.evaluate((el: HTMLCanvasElement) => {
-      // Use clientWidth/Height which represents the actual CSS rendered size
+      // Use the inline style width/height which is what PDFCanvas explicitly sets
       return {
         backingWidth: el.width,
         backingHeight: el.height,
-        cssWidth: el.clientWidth,
-        cssHeight: el.clientHeight
+        cssWidth: parseFloat(el.style.width),
+        cssHeight: parseFloat(el.style.height)
       };
     });
 
     // The backing store width should be the CSS width multiplied by the devicePixelRatio
-    // We tolerate a 2px difference due to subpixel rendering and integer rounding in HTML canvas/clientWidth
+    // We tolerate a 2px difference due to subpixel rendering and integer rounding in HTML canvas
     expect(Math.abs(canvasDimensions.backingWidth - (canvasDimensions.cssWidth * pixelRatio))).toBeLessThanOrEqual(2);
     expect(Math.abs(canvasDimensions.backingHeight - (canvasDimensions.cssHeight * pixelRatio))).toBeLessThanOrEqual(2);
 

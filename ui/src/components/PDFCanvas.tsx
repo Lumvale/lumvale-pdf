@@ -11,6 +11,38 @@ import { getPDFDocument } from '../utils/pdfCache';
 import AnnotationOverlay from './AnnotationOverlay';
 import type { Annotation, AnnotationType } from './AnnotationOverlay';
 
+// Global semaphore: limit concurrent pdf.js page renders to prevent saturating
+// the main thread when many pages need re-rendering simultaneously.
+//
+// The queue is priority-aware: high-priority requests (the large pages in the
+// main viewer) are served before low-priority ones (the ~100+ sidebar
+// thumbnails). Without this, after a document edit the sidebar's thumbnails —
+// which mount first in the DOM — grab every slot and starve the main viewer,
+// so the user sees numbers appear on the thumbnails while the main page stays
+// stale for a very long time.
+let renderSlots = 3;
+const highPriorityQueue: Array<() => void> = [];
+const lowPriorityQueue: Array<() => void> = [];
+
+const acquireRenderSlot = (highPriority: boolean): Promise<void> => {
+  if (renderSlots > 0) {
+    renderSlots--;
+    return Promise.resolve();
+  }
+  return new Promise(resolve => {
+    (highPriority ? highPriorityQueue : lowPriorityQueue).push(resolve);
+  });
+};
+
+const releaseRenderSlot = () => {
+  const next = highPriorityQueue.shift() ?? lowPriorityQueue.shift();
+  if (next) {
+    next();
+  } else {
+    renderSlots++;
+  }
+};
+
 interface PDFCanvasProps {
   documentBytes: Uint8Array;
   pageNumber: number;
@@ -24,6 +56,19 @@ interface PDFCanvasProps {
   annotations?: Annotation[];
   onAnnotationsChange?: (annotations: Annotation[]) => void;
   onToolSelect?: (tool: AnnotationType | null) => void;
+  /** Whether this canvas should win render slots ahead of others. The main
+   *  viewer uses 'high' (the default); the sidebar thumbnails use 'low' so they
+   *  never starve the page the user is actually looking at. */
+  renderPriority?: 'high' | 'low';
+  /** Reports the page's intrinsic (unscaled) size in PDF points once rendered.
+   *  The Workspace uses this to size placeholders for virtualized pages so the
+   *  scroll height stays stable. */
+  onRenderedSize?: (widthPt: number, heightPt: number) => void;
+  /** Display-pixel size to reserve before this page has rendered. Lets a freshly
+   *  mounted (e.g. just-scrolled-into-view) canvas reserve the same space as the
+   *  virtualization placeholder it replaces, avoiding a scroll jump. */
+  placeholderWidth?: number;
+  placeholderHeight?: number;
 }
 
 /**
@@ -47,7 +92,11 @@ export default function PDFCanvas({
   annotations = [],
   onAnnotationsChange,
   onToolSelect,
-  rotation = 0
+  rotation = 0,
+  renderPriority = 'high',
+  onRenderedSize,
+  placeholderWidth,
+  placeholderHeight
 }: PDFCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -57,31 +106,7 @@ export default function PDFCanvas({
   const [isVisible, setIsVisible] = useState(false);
   const [hasRendered, setHasRendered] = useState(false);
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
-  const renderedStateRef = useRef<{ scale: number; pageNumber: number } | null>(null);
-
-  useEffect(() => {
-    // Fetch dimensions immediately to prevent flicker before intersection
-    let active = true;
-    const fetchDimensions = async () => {
-      try {
-        const pdf = await getPDFDocument(documentBytes);
-        if (!active) return;
-        const page = await pdf.getPage(pageNumber);
-        if (!active) return;
-        const viewport = page.getViewport({ scale: 1.0, rotation: rotation || 0 }); // Get base dimensions
-        if (active) {
-          setCanvasDimensions({ 
-            width: viewport.width * scale, 
-            height: viewport.height * scale 
-          });
-        }
-      } catch (err) {
-        console.error('Failed to pre-fetch dimensions', err);
-      }
-    };
-    fetchDimensions();
-    return () => { active = false; };
-  }, [documentBytes, pageNumber, rotation]);
+  const renderedStateRef = useRef<{ scale: number; pageNumber: number; rotation: number; documentBytes: Uint8Array } | null>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -116,13 +141,13 @@ export default function PDFCanvas({
   }, [scale]);
 
   useEffect(() => {
-    // If not visible, or already rendered the exact same configuration, don't do anything
     if (!isVisible) return;
     if (
-      hasRendered && 
-      renderedStateRef.current?.scale === scale && 
-      renderedStateRef.current?.pageNumber === pageNumber &&
-      (renderedStateRef.current as any)?.rotation === rotation
+      renderedStateRef.current &&
+      renderedStateRef.current.scale === scale &&
+      renderedStateRef.current.pageNumber === pageNumber &&
+      renderedStateRef.current.rotation === rotation &&
+      renderedStateRef.current.documentBytes === documentBytes
     ) {
       return;
     }
@@ -130,18 +155,35 @@ export default function PDFCanvas({
     let active = true;
     let renderTask: any = null;
 
+    // Whether this canvas already shows a (now-stale) render. When re-rendering
+    // after a document edit we keep the old pixels on screen until the new
+    // render is ready, instead of blanking to a placeholder — otherwise every
+    // page the user isn't currently looking at flashes white and stays white.
+    const isRerender = renderedStateRef.current !== null;
+
     const renderPage = async () => {
-      setLoading(true);
-      setError(null);
-      setHasRendered(false); // Reset since we are rendering a new config
-      
+      let slotAcquired = false;
       try {
+        // Wait for a render slot BEFORE updating state - this prevents all 107 components
+        // from calling setState simultaneously, which would block the main thread and freeze scrolling.
+        await acquireRenderSlot(renderPriority === 'high');
+        slotAcquired = true;
+        if (!active) return;
+
+        // Only update state once we have a slot (at most 3 components at a time).
+        // On a first render we show the loading/placeholder state; on a re-render
+        // we leave the existing canvas visible so it doesn't flash blank.
+        setError(null);
+        if (!isRerender) {
+          setLoading(true);
+          setHasRendered(false);
+        }
+
         const pdf = await getPDFDocument(documentBytes);
-        
+
         // Ensure the component hasn't unmounted
         if (!active) return;
         
-        // Ensure page index is valid
         if (pageNumber < 1 || pageNumber > pdf.numPages) {
           throw new Error(`Invalid page number: ${pageNumber}`);
         }
@@ -161,10 +203,17 @@ export default function PDFCanvas({
         const context = canvas.getContext('2d');
         if (!context) return;
         
-        // Scale canvas backing store
-        canvas.height = viewport.height * pixelRatio;
-        canvas.width = viewport.width * pixelRatio;
-        
+        // Scale canvas backing store. Assigning width/height clears the canvas,
+        // so only do it when the size actually changes — that way a same-size
+        // re-render (e.g. after adding page numbers) keeps the previous pixels on
+        // screen until pdf.js paints the new ones over them, with no white flash.
+        const backingWidth = Math.floor(viewport.width * pixelRatio);
+        const backingHeight = Math.floor(viewport.height * pixelRatio);
+        if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
+          canvas.width = backingWidth;
+          canvas.height = backingHeight;
+        }
+
         // Scale canvas CSS display size
         canvas.style.height = `${viewport.height}px`;
         canvas.style.width = `${viewport.width}px`;
@@ -220,8 +269,11 @@ export default function PDFCanvas({
         if (active) {
           setLoading(false);
           setHasRendered(true);
-          renderedStateRef.current = { scale, pageNumber, rotation } as any;
+          renderedStateRef.current = { scale, pageNumber, rotation, documentBytes } as any;
           setCanvasDimensions({ width: viewport.width, height: viewport.height });
+          // Report intrinsic page size (unscaled) so the Workspace can size
+          // placeholders for off-window (virtualized) pages.
+          onRenderedSize?.(viewport.width / scale, viewport.height / scale);
         }
       } catch (err: any) {
         // Ignore render cancellation errors
@@ -231,6 +283,7 @@ export default function PDFCanvas({
         console.error('Error rendering PDF:', err);
         if (active) setError(String(err));
       } finally {
+        if (slotAcquired) releaseRenderSlot();
         if (active) setLoading(false);
       }
     };
@@ -239,20 +292,18 @@ export default function PDFCanvas({
 
     return () => {
       active = false;
-      if (renderTask) {
-        renderTask.cancel();
-      }
+      // Do not cancel renderTask because it can deadlock the pdf.js worker
     };
-  }, [documentBytes, pageNumber, scale, isVisible, rotation, hasRendered]);
+  }, [documentBytes, pageNumber, scale, isVisible, rotation]);
 
   return (
     <div 
       ref={containerRef} 
       className={`relative shadow-2xl bg-white ${className}`}
-      style={!hasRendered ? { 
-        width: canvasDimensions.width || 800 * scale, 
-        height: canvasDimensions.height || 1130 * scale, 
-        maxWidth: '100%' 
+      style={!hasRendered ? {
+        width: canvasDimensions.width || placeholderWidth || 800 * scale,
+        height: canvasDimensions.height || placeholderHeight || 1130 * scale,
+        maxWidth: '100%'
       } : {
         width: canvasDimensions.width,
         height: canvasDimensions.height
@@ -285,7 +336,7 @@ export default function PDFCanvas({
       {onAnnotationsChange && canvasDimensions.width > 0 && (
         <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 30 }}>
           <AnnotationOverlay
-            pageIndex={pageNumber - 1} // zero-indexed
+            pageIndex={pageNumber - 1}
             scale={scale}
             activeTool={activeAnnotationTool}
             activeColor={activeAnnotationColor}

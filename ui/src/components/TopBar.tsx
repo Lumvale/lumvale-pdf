@@ -179,13 +179,9 @@ export default function TopBar({
         </div>
       </div>
 
-      <div className="absolute left-1/2 -translate-x-1/2 flex items-center h-full pointer-events-none">
-        {isDark ? (
-          <img src="/Lumvale-pdf-dark.svg" alt="Lumvale PDF" className="h-5 opacity-90" />
-        ) : (
-          <img src="/Lumvale-pdf-light.svg" alt="Lumvale PDF" className="h-5 opacity-90" />
-        )}
-      </div>
+      {/* Spacer keeps the menu (left) and controls (right) apart and leaves the
+          centre of the bar as a draggable region in the Electron window. */}
+      <div className="flex-1 h-full" />
 
       <div className="flex items-center space-x-2 h-full" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         {onShowInstall && (

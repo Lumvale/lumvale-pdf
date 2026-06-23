@@ -11,10 +11,16 @@
  *  - demo2.pdf            — 1 page, no bookmarks (merge test)
  *  - demo-multipage.pdf   — 5 A4 pages, no bookmarks (thumbnail sync tests)
  *  - demo-bookmarked.pdf  — 6 A4 pages with a 3-entry PDF outline (bookmark tests)
+ *  - demo-heavy.pdf       — 80 full-page raster pages (~3MB), a non-personal
+ *                           stand-in for a scanned filing. Generated locally and
+ *                           git-ignored — never commit it. Used by the
+ *                           apply-page-number render tests, which need a doc
+ *                           that is genuinely expensive to render.
  */
 
 import { chromium, type FullConfig } from '@playwright/test';
 import fs from 'fs';
+import zlib from 'zlib';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import {
@@ -200,6 +206,75 @@ async function injectOutline(
 }
 
 // ---------------------------------------------------------------------------
+// Heavy raster fixture — a non-personal stand-in for a scanned document.
+// Every page is a full-page image so each pdf.js render is genuinely expensive,
+// which is what makes the apply-page-number render regressions reproducible.
+// Kept out of git (see .gitignore) and generated on demand below.
+// ---------------------------------------------------------------------------
+
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+
+function crc32(buf: Buffer): number {
+  let c = 0xffffffff;
+  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+// Build a minimal truecolor PNG from a noisy gradient (doesn't compress away and
+// is costly to rasterize, like a scanned page).
+function makeNoisyPng(width: number, height: number): Buffer {
+  const bytesPerRow = width * 3;
+  const raw = Buffer.alloc((bytesPerRow + 1) * height);
+  for (let y = 0; y < height; y++) {
+    raw[y * (bytesPerRow + 1)] = 0; // filter: none
+    for (let x = 0; x < width; x++) {
+      const o = y * (bytesPerRow + 1) + 1 + x * 3;
+      raw[o] = (x ^ y) & 0xff;
+      raw[o + 1] = (x * 2 + y) & 0xff;
+      raw[o + 2] = ((x + y * 3) & 0xff) ^ ((Math.random() * 32) | 0);
+    }
+  }
+  const chunk = (type: string, data: Buffer) => {
+    const len = Buffer.alloc(4); len.writeUInt32BE(data.length, 0);
+    const body = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+    const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(body), 0);
+    return Buffer.concat([len, body, crc]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8; // bit depth
+  ihdr[9] = 2; // color type: truecolor RGB
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', zlib.deflateSync(raw, { level: 1 })),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+
+async function generateHeavyFixture(outPath: string, pageCount = 80): Promise<void> {
+  const doc = await PDFDocument.create();
+  // One large image reused on every page keeps the file small while still being
+  // slow to rasterize at high DPI.
+  const img = await doc.embedPng(makeNoisyPng(900, 1200));
+  for (let i = 1; i <= pageCount; i++) {
+    const page = doc.addPage([612, 792]);
+    page.drawImage(img, { x: 0, y: 0, width: 612, height: 792 });
+    page.drawText(`Heavy fixture page ${i}`, { x: 24, y: 760, size: 14, color: rgb(1, 1, 1) });
+  }
+  fs.writeFileSync(outPath, await doc.save());
+}
+
+// ---------------------------------------------------------------------------
 // Global setup entry point
 // ---------------------------------------------------------------------------
 
@@ -243,5 +318,17 @@ export default async function globalSetup(_config: FullConfig) {
   console.log('[fixture-gen] ✓ demo-bookmarked.pdf (6 pages, 3 bookmarks)');
 
   await browser.close();
+
+  // 5. demo-heavy.pdf — large raster fixture (git-ignored). Only (re)generate
+  //    when missing; it's ~3MB and slow to build, and its contents don't change.
+  const heavyPath = path.join(FIXTURES, 'demo-heavy.pdf');
+  if (fs.existsSync(heavyPath)) {
+    console.log('[fixture-gen] ✓ demo-heavy.pdf (cached)');
+  } else {
+    console.log('[fixture-gen] … demo-heavy.pdf (generating, ~3MB)');
+    await generateHeavyFixture(heavyPath);
+    console.log('[fixture-gen] ✓ demo-heavy.pdf (80 pages)');
+  }
+
   console.log('[fixture-gen] All fixtures ready.\n');
 }
