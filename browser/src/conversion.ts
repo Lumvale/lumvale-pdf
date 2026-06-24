@@ -89,22 +89,16 @@ async function htmlToPdfBytes(htmlContent: string): Promise<Uint8Array> {
         });
 
         const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-        
-        let heightLeft = pdfHeight;
-        let position = 0;
         const pageHeight = pdf.internal.pageSize.getHeight();
+        const scaledHeight = (canvas.height * pdfWidth) / canvas.width;
 
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
-        heightLeft -= pageHeight;
-
-        // Small epsilon to avoid blank trailing page
-        while (heightLeft > 1) {
-          position = heightLeft - pdfHeight;
-          pdf.addPage();
-          pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
-          heightLeft -= pageHeight;
-        }
+        // Tile the single capture across page-height strips (shared math with the
+        // docx/markdown converters), drawn at its true proportional height so it
+        // is never stretched to fill the page.
+        pageOffsets(scaledHeight, pageHeight).forEach((position, i) => {
+          if (i > 0) pdf.addPage([pdfWidth, pageHeight], 'portrait');
+          pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, scaledHeight);
+        });
 
         const arrayBuffer = pdf.output('arraybuffer');
         document.body.removeChild(iframe);
@@ -208,22 +202,18 @@ export async function convertExcelToPDF(fileBytes: Uint8Array | ArrayBuffer): Pr
  * Converts a Markdown file (.md) to PDF
  */
 export async function convertMarkdownToPDF(fileBytes: Uint8Array | ArrayBuffer): Promise<Uint8Array> {
-  const { jsPDF } = await import('jspdf');
-  const html2canvas = (await import('html2canvas')).default;
-  const { marked } = await import('marked');
-
   const textDecoder = new TextDecoder('utf-8');
   const markdownText = textDecoder.decode(fileBytes);
   const htmlContent = await marked.parse(markdownText);
 
-  // We use the same paginated rendering strategy as Word to ensure proper A4 pagination
   const container = document.createElement('div');
   container.style.position = 'absolute';
   container.style.left = '-9999px';
   container.style.top = '0';
-  container.style.width = '800px'; 
+  container.style.width = '800px';
+  container.style.backgroundColor = 'white';
   container.className = 'markdown-preview';
-  
+
   const article = document.createElement('article');
   article.className = 'markdown-body p-12 text-black';
   article.innerHTML = htmlContent;
@@ -231,6 +221,12 @@ export async function convertMarkdownToPDF(fileBytes: Uint8Array | ArrayBuffer):
   document.body.appendChild(container);
 
   try {
+    // Wait for web fonts so html2canvas measures with the real metrics rather
+    // than a fallback face (mismatched metrics manifested as overlapping text).
+    if (document.fonts?.ready) {
+      try { await document.fonts.ready; } catch { /* fonts API best-effort */ }
+    }
+
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'px',
@@ -239,110 +235,26 @@ export async function convertMarkdownToPDF(fileBytes: Uint8Array | ArrayBuffer):
 
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const A4_CSS_HEIGHT = 1122; 
 
-    // Extract all top-level markdown elements (p, h1, ul, pre, etc)
-    const paragraphs = Array.from(article.childNodes);
-    article.innerHTML = ''; // Empty the container
-
-    const pages: HTMLElement[] = [];
-    let currentContainer: HTMLElement;
-    let currentArticle: HTMLElement;
-
-    const createPage = () => {
-      currentContainer = document.createElement('div');
-      currentContainer.style.width = '800px';
-      currentContainer.style.height = A4_CSS_HEIGHT + 'px';
-      currentContainer.style.overflow = 'hidden';
-      currentContainer.style.position = 'absolute';
-      currentContainer.style.left = '-9999px';
-      currentContainer.style.top = '0';
-      currentContainer.style.backgroundColor = 'white';
-      currentContainer.className = 'markdown-preview';
-      
-      currentArticle = document.createElement('article');
-      currentArticle.className = 'markdown-body p-12 text-black';
-      currentContainer.appendChild(currentArticle);
-      
-      document.body.appendChild(currentContainer);
-      pages.push(currentContainer);
-    };
-
-    createPage();
-
-    for (const p of paragraphs) {
-      currentArticle!.appendChild(p);
-      
-      if (currentContainer!.scrollHeight > A4_CSS_HEIGHT && currentArticle!.childNodes.length > 1) {
-        currentArticle!.removeChild(p);
-        
-        // Widow/Orphan control: don't leave headings stranded at the bottom of a page
-        const orphans: Node[] = [p];
-        let moved = true;
-        while (moved && currentArticle!.lastChild) {
-          moved = false;
-          const last = currentArticle!.lastChild as HTMLElement;
-          
-          // In marked.js HTML, there are often empty text nodes (newlines) between elements
-          if (last.nodeType === Node.TEXT_NODE && !last.textContent?.trim()) {
-            orphans.unshift(last);
-            currentArticle!.removeChild(last);
-            moved = true;
-            continue;
-          }
-          
-          let isHeading = false;
-          
-          if (last.tagName && last.tagName.match(/^H[1-6]$/i)) {
-            isHeading = true;
-          } else if (last.innerText) {
-            const text = last.innerText.trim();
-            if (text.length > 0 && text.length <= 150) {
-              if (text.match(/^[A-Z0-9]{1,3}\.\s/i)) {
-                isHeading = true;
-              } else {
-                const isBold = last.style.fontWeight === 'bold' || last.style.fontWeight === '700' || (last.querySelector && !!last.querySelector('strong, b'));
-                if (isBold) isHeading = true;
-              }
-            }
-          }
-          
-          if (isHeading) {
-            orphans.unshift(last);
-            currentArticle!.removeChild(last);
-            moved = true;
-          }
-        }
-        
-        createPage();
-        
-        for (const orphan of orphans) {
-          currentArticle!.appendChild(orphan);
-        }
-      }
-    }
-    
+    // Same single-capture-then-slice strategy as convertWordToPDF: rasterise the
+    // styled markdown once and tile that capture across page-height strips. The
+    // previous approach clipped elements at a hardcoded 1122px height and then
+    // stretched each slice to the real (taller) A4 page, which chopped content
+    // mid-element and squished every page vertically.
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+    });
     document.body.removeChild(container);
 
-    let isFirst = true;
-    for (const page of pages) {
-      const canvas = await html2canvas(page, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      });
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const scaledHeight = (canvas.height * pdfWidth) / canvas.width;
 
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      
-      if (!isFirst) {
-        pdf.addPage([pdfWidth, pageHeight], 'portrait');
-      }
-      
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pageHeight);
-      isFirst = false;
-      
-      document.body.removeChild(page);
-    }
+    pageOffsets(scaledHeight, pageHeight).forEach((position, i) => {
+      if (i > 0) pdf.addPage([pdfWidth, pageHeight], 'portrait');
+      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, scaledHeight);
+    });
 
     const arrayBuffer = pdf.output('arraybuffer');
     return new Uint8Array(arrayBuffer);
