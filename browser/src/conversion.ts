@@ -7,6 +7,24 @@ import { marked } from 'marked';
 import { init as initPptx } from 'pptx-preview';
 
 /**
+ * Vertical offsets (in PDF px) at which to draw a full-document image so it
+ * tiles cleanly across page-height strips: [0, -pageHeight, -2*pageHeight, ...].
+ *
+ * This is the page-slicing math shared by the rasterising converters. It is a
+ * pure function so it can be unit-tested without a DOM (the surrounding
+ * html2canvas/jsPDF work needs a real browser and is covered by app e2e tests).
+ *
+ * A 1px epsilon avoids emitting a trailing near-empty page when the scaled
+ * height is an exact (or all-but-exact) multiple of the page height.
+ */
+export function pageOffsets(scaledHeight: number, pageHeight: number): number[] {
+  if (!(scaledHeight > 0) || !(pageHeight > 0)) return [0];
+  const pages = Math.max(1, Math.ceil((scaledHeight - 1) / pageHeight));
+  // `0 - …` rather than `-i * …` so the first offset is +0, not -0.
+  return Array.from({ length: pages }, (_, i) => 0 - i * pageHeight);
+}
+
+/**
  * Creates a hidden iframe, renders HTML content into it,
  * captures it with html2canvas, and generates a PDF.
  */
@@ -125,118 +143,42 @@ export async function convertWordToPDF(fileBytes: Uint8Array | ArrayBuffer): Pro
       useBase64URL: true,
     });
 
-    await new Promise(r => setTimeout(r, 1000)); // wait for fonts/images to render
+    await new Promise(r => setTimeout(r, 1000)); // wait for images to render
+    // Wait for web fonts too — rasterising before they load makes html2canvas
+    // fall back to different metrics, which manifested as overlapping text.
+    if (document.fonts?.ready) {
+      try { await document.fonts.ready; } catch { /* fonts API best-effort */ }
+    }
 
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'px',
       format: 'a4'
     });
-    
+
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const A4_CSS_HEIGHT = 1122; // 800px * 1.4025 (Standard A4 ratio)
 
-    // docx-preview with inWrapper: false appends <style> tags and a <section class="docx"><article>...</article></section>
-    // To preserve styles and layout, we find the deepest container, extract its children, and clone the empty shell for each page!
-    
-    const docxSection = container.querySelector('.docx');
-    const article = docxSection ? docxSection.querySelector('article') : null;
-    const contentParent = article || docxSection || container;
-    
-    const paragraphs = Array.from(contentParent.childNodes);
-    contentParent.innerHTML = ''; // Empty the original shell
-
-    const pages: HTMLElement[] = [];
-    let currentContainer: HTMLElement;
-    let currentContentParent: HTMLElement;
-    
-    const createPage = () => {
-      currentContainer = container.cloneNode(true) as HTMLElement;
-      currentContainer.style.height = A4_CSS_HEIGHT + 'px';
-      currentContainer.style.overflow = 'hidden';
-      
-      const cSection = currentContainer.querySelector('.docx');
-      currentContentParent = ((cSection ? cSection.querySelector('article') : null) || cSection || currentContainer) as HTMLElement;
-      
-      document.body.appendChild(currentContainer);
-      pages.push(currentContainer);
-    };
-
-    createPage();
-
-    for (const p of paragraphs) {
-      currentContentParent!.appendChild(p);
-      
-      // If the content exceeds the A4 height, move it to a new page
-      if (currentContainer!.scrollHeight > A4_CSS_HEIGHT && currentContentParent!.childNodes.length > 1) {
-        currentContentParent!.removeChild(p);
-        
-        // Widow/Orphan control: don't leave headings stranded at the bottom of a page
-        const orphans: Node[] = [p];
-        let moved = true;
-        while (moved && currentContentParent!.lastChild) {
-          moved = false;
-          const last = currentContentParent!.lastChild as HTMLElement;
-          // Heuristic to detect headings (since docx-preview often uses <p> with inline styles or classes)
-          let isHeading = false;
-          if (last.tagName && last.tagName.match(/^H[1-6]$/i)) {
-            isHeading = true;
-          } else if (last.className && typeof last.className === 'string' && last.className.toLowerCase().includes('heading')) {
-            isHeading = true;
-          } else if (last.innerText) {
-            const text = last.innerText.trim();
-            // Headings are typically short and either bold or prefixed with numbering
-            if (text.length > 0 && text.length <= 150) {
-              if (text.match(/^[A-Z0-9]{1,3}\.\s/i)) {
-                isHeading = true;
-              } else {
-                // Check if it's bold
-                const isBold = last.style.fontWeight === 'bold' || 
-                               last.style.fontWeight === '700' || 
-                               (last.querySelector && !!last.querySelector('strong, b'));
-                if (isBold) isHeading = true;
-              }
-            }
-          }
-          if (isHeading) {
-            orphans.unshift(last);
-            currentContentParent!.removeChild(last);
-            moved = true;
-          }
-        }
-        
-        createPage();
-        
-        // Append all pulled orphans to the new page
-        for (const orphan of orphans) {
-          currentContentParent!.appendChild(orphan);
-        }
-      }
-    }
-    
+    // Rasterise the fully-styled document once, then slice that single tall image
+    // into page-height strips. The previous approach paginated by cloning the
+    // container and clipping elements at a hardcoded 1122px height, which cut
+    // content mid-element and—because that constant didn't match jsPDF's real A4
+    // pixel height—vertically stretched each page, producing the overlapping /
+    // chopped text. Slicing one continuous capture avoids both problems.
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+    });
     document.body.removeChild(container);
 
-    let isFirst = true;
-    for (const page of pages) {
-      const canvas = await html2canvas(page, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      });
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const scaledHeight = (canvas.height * pdfWidth) / canvas.width;
 
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      
-      if (!isFirst) {
-        pdf.addPage([pdfWidth, pageHeight], 'portrait');
-      }
-      
-      // The canvas perfectly matches the A4 ratio, so we can draw it perfectly to the page bounds
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pageHeight);
-      isFirst = false;
-      
-      document.body.removeChild(page);
-    }
+    pageOffsets(scaledHeight, pageHeight).forEach((position, i) => {
+      if (i > 0) pdf.addPage([pdfWidth, pageHeight], 'portrait');
+      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, scaledHeight);
+    });
 
     const arrayBuffer = pdf.output('arraybuffer');
     return new Uint8Array(arrayBuffer);
