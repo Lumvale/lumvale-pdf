@@ -1,6 +1,6 @@
 {
   "name": "@lumvale/pdf-browser",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Browser-platform document functionality for LumvalePDF (Office/Markdown/image → PDF conversion via the DOM).",
   "license": "Apache-2.0",
   "homepage": "https://github.com/Lumvale/lumvale-pdf",
