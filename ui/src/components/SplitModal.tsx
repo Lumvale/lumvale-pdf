@@ -98,7 +98,7 @@ export default function SplitModal({ documentBytes, pageCount, onClose }: SplitM
       <div className="bg-lumvale-surface rounded-lg shadow-2xl border border-lumvale-border w-full max-w-md overflow-hidden">
         <div className="flex justify-between items-center p-4 border-b border-lumvale-border">
           <h2 className="text-lg font-bold">Split PDF Document</h2>
-          <button onClick={onClose} className="text-lumvale-muted hover:text-white transition-colors">
+          <button onClick={onClose} className="text-lumvale-muted hover:text-[var(--color-lumvale-text)] transition-colors">
             <X size={20} />
           </button>
         </div>
@@ -176,7 +176,7 @@ export default function SplitModal({ documentBytes, pageCount, onClose }: SplitM
         <div className="p-4 border-t border-lumvale-border flex justify-end space-x-3">
           <button 
             onClick={onClose}
-            className="px-4 py-2 rounded text-sm text-lumvale-muted hover:text-white transition-colors"
+            className="px-4 py-2 rounded text-sm text-lumvale-muted hover:text-[var(--color-lumvale-text)] transition-colors"
             disabled={isProcessing}
           >
             Cancel
@@ -184,7 +184,7 @@ export default function SplitModal({ documentBytes, pageCount, onClose }: SplitM
           <button 
             onClick={handleSplit}
             disabled={isProcessing}
-            className="px-4 py-2 rounded text-sm bg-lumvale-primary text-white font-bold hover:bg-lumvale-primary/90 transition-colors disabled:opacity-50 min-w-[120px]"
+            className="px-4 py-2 rounded text-sm bg-lumvale-primary text-[var(--color-lumvale-text)] font-bold hover:bg-lumvale-primary/90 transition-colors disabled:opacity-50 min-w-[120px]"
           >
             {isProcessing ? `Splitting ${Math.round(progress)}%` : 'Split & Download ZIP'}
           </button>

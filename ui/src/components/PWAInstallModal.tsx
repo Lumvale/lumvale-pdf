@@ -23,18 +23,18 @@ export default function PWAInstallModal({ isOpen, onClose, onInstall, isIOSManua
             <div className="relative h-32 bg-gradient-to-br from-lumvale-primary/40 to-lumvale-surface flex items-center justify-center p-6 border-b border-lumvale-border">
               <button 
                 onClick={onClose}
-                className="absolute top-4 right-4 text-lumvale-muted hover:text-white bg-black/20 hover:bg-black/40 rounded-full p-1.5 transition-colors"
+                className="absolute top-4 right-4 text-lumvale-muted hover:text-[var(--color-lumvale-text)] bg-black/20 hover:bg-black/40 rounded-full p-1.5 transition-colors"
               >
                 <X size={18} />
               </button>
               
-              <div className="bg-lumvale-primary w-16 h-16 rounded-2xl shadow-lg flex items-center justify-center rotate-3 border-2 border-white/10">
-                <Download size={32} className="text-white" />
+              <div className="bg-lumvale-primary w-16 h-16 rounded-2xl shadow-lg flex items-center justify-center rotate-3 border-2 border-[var(--color-lumvale-border)]">
+                <Download size={32} className="text-[var(--color-lumvale-text)]" />
               </div>
             </div>
 
             <div className="p-6 text-center">
-              <h2 className="text-2xl font-bold text-white mb-2">Install LumvalePDF</h2>
+              <h2 className="text-2xl font-bold text-[var(--color-lumvale-text)] mb-2">Install LumvalePDF</h2>
               <p className="text-sm text-lumvale-muted mb-6 px-4">
                 Install LumvalePDF on your device to enjoy a faster, app-like experience that works completely offline.
               </p>
@@ -55,21 +55,21 @@ export default function PWAInstallModal({ isOpen, onClose, onInstall, isIOSManua
               </div>
 
               {isIOSManualInstall ? (
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4 text-left">
-                  <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-2">
+                <div className="bg-[var(--color-lumvale-border)] border border-[var(--color-lumvale-border)] rounded-lg p-4 text-left">
+                  <h3 className="text-sm font-semibold text-[var(--color-lumvale-text)] flex items-center gap-2 mb-2">
                     <Share size={16} /> iOS Installation
                   </h3>
-                  <p className="text-xs text-gray-400 mb-2">To install on your iPhone or iPad:</p>
+                  <p className="text-xs text-[var(--color-lumvale-muted)] mb-2">To install on your iPhone or iPad:</p>
                   <ol className="text-xs text-gray-300 list-decimal pl-4 space-y-1">
-                    <li>Tap the <strong className="text-white">Share</strong> button in Safari's bottom bar.</li>
-                    <li>Scroll down and select <strong className="text-white">Add to Home Screen</strong>.</li>
-                    <li>Tap <strong className="text-white">Add</strong> in the top right corner.</li>
+                    <li>Tap the <strong className="text-[var(--color-lumvale-text)]">Share</strong> button in Safari's bottom bar.</li>
+                    <li>Scroll down and select <strong className="text-[var(--color-lumvale-text)]">Add to Home Screen</strong>.</li>
+                    <li>Tap <strong className="text-[var(--color-lumvale-text)]">Add</strong> in the top right corner.</li>
                   </ol>
                 </div>
               ) : (
                 <button
                   onClick={onInstall}
-                  className="w-full bg-lumvale-primary hover:bg-lumvale-primary/90 text-white font-medium py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all"
+                  className="w-full bg-lumvale-primary hover:bg-lumvale-primary/90 text-[var(--color-lumvale-text)] font-medium py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all"
                 >
                   Install App
                 </button>

@@ -148,7 +148,7 @@ function BookmarkItem({
     ? isDimmed
       ? 'bookmark-dim-row'       // muted: we've scrolled past this bookmark's page
       : 'bookmark-active-row'    // full: we are exactly on this bookmark's page
-    : 'text-lumvale-text hover:bg-white/10';
+    : 'text-lumvale-text hover:bg-[var(--color-lumvale-border)]';
 
   return (
     <div className={depth > 0 ? 'ml-3' : ''}>
@@ -174,7 +174,7 @@ function BookmarkItem({
         )}
       </div>
       {expanded && hasChildren && (
-        <div className="border-l border-white/10 ml-3 pl-1 mt-0.5">
+        <div className="border-l border-[var(--color-lumvale-border)] ml-3 pl-1 mt-0.5">
           {item.items.map((child, idx) => {
             const ancestors = new Set<OutlineNode>();
             findAncestorsToExpand([child], currentPage, pageMap, ancestors);

@@ -52,7 +52,7 @@
     "@hello-pangea/dnd": "^18.0.1",
     "@huggingface/transformers": "^4.2.0",
     "@lumvale/pdf-browser": "^0.1.0",
-    "@lumvale/pdf-core": "^1.1.0",
+    "@lumvale/pdf-core": "^1.1.1",
     "@types/jszip": "^3.4.0",
     "docx": "^9.7.1",
     "electron-squirrel-startup": "^1.0.1",

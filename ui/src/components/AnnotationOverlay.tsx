@@ -676,7 +676,7 @@ export default function AnnotationOverlay({
           />
           <button 
             onClick={commitTextInput}
-            className="bg-lumvale-primary text-white p-1 rounded hover:bg-lumvale-primary/80 transition shadow-lg"
+            className="bg-lumvale-primary text-[var(--color-lumvale-text)] p-1 rounded hover:bg-lumvale-primary/80 transition shadow-lg"
             title="Save Text"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>

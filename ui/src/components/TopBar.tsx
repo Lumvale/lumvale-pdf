@@ -12,11 +12,17 @@ interface TopBarProps {
   onMetadata: () => void;
   onEncrypt: () => void;
   onCheckUpdates: () => void;
+  onOpen?: () => void;
+  onAbout?: () => void;
   isCompressing: boolean;
   isEditMode: boolean;
   onShowInstall?: () => void;
   onCloseDocument?: () => void;
   onSave?: () => void;
+  onSaveAs?: () => void;
+  customFileMenuItems?: React.ReactNode;
+  customToolsMenuItems?: React.ReactNode;
+  customTopBarRight?: React.ReactNode;
 }
 
 /**
@@ -36,11 +42,16 @@ export default function TopBar({
   onMetadata,
   onEncrypt,
   onCheckUpdates,
+  onOpen,
   isCompressing,
   isEditMode,
   onShowInstall,
   onCloseDocument,
-  onSave
+  onSave,
+  onSaveAs,
+  customFileMenuItems,
+  customToolsMenuItems,
+  customTopBarRight
 }: TopBarProps) {
   const [activeMenu, setActiveMenu] = useState<'file' | 'tools' | 'help' | null>(null);
   const [isDark, setIsDark] = useState(isDarkMode());
@@ -80,43 +91,48 @@ export default function TopBar({
       <div className="flex space-x-1 h-full" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <div className="relative h-full flex items-center">
           <button 
-            className={`px-3 h-full flex items-center transition-colors ${activeMenu === 'file' ? 'bg-lumvale-border text-white' : 'text-lumvale-muted hover:bg-lumvale-border hover:text-white'}`}
+            className={`px-3 h-full flex items-center transition-colors ${activeMenu === 'file' ? 'bg-lumvale-border text-[var(--color-lumvale-text)]' : 'text-lumvale-muted hover:bg-lumvale-border hover:text-[var(--color-lumvale-text)]'}`}
             onClick={() => toggleMenu('file')}
           >
             File
           </button>
           {activeMenu === 'file' && (
-            <div className="absolute top-full left-0 mt-0 w-48 bg-lumvale-surface border border-lumvale-border shadow-2xl rounded-b-md py-1">
-              <button onClick={() => handleAction(onExtract)} className="w-full text-left px-4 py-1.5 text-lumvale-text hover:bg-lumvale-primary hover:text-white">
-                Extract Pages...
-              </button>
-              <button onClick={() => handleAction(onSplit)} className="w-full text-left px-4 py-1.5 text-lumvale-text hover:bg-lumvale-primary hover:text-white">
-                Split Document...
-              </button>
+            <div className="absolute top-full left-0 mt-0 w-48 bg-[var(--color-lumvale-surface)] border border-[var(--color-lumvale-border)] shadow-2xl rounded-b-md py-1">
+              {onOpen && (
+                <button onClick={() => handleAction(onOpen)} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
+                  Open Document...
+                </button>
+              )}
               {isEditMode && (
-                <button onClick={() => handleAction(onMerge)} className="w-full text-left px-4 py-1.5 text-lumvale-text hover:bg-lumvale-primary hover:text-white">
+                <button onClick={() => handleAction(onMerge)} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
                   Merge Document...
                 </button>
               )}
-              <div className="h-px bg-lumvale-border my-1"></div>
+              <div className="h-px bg-[var(--color-lumvale-border)] my-1"></div>
               {onSave && (
-                <button onClick={() => handleAction(onSave)} className="w-full text-left px-4 py-1.5 text-lumvale-text hover:bg-lumvale-primary hover:text-white">
+                <button onClick={() => handleAction(onSave)} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
                   Save Document...
                 </button>
               )}
-              <button onClick={() => handleAction(onExport)} className="w-full text-left px-4 py-1.5 text-lumvale-text hover:bg-lumvale-primary hover:text-white">
-                Export PDF
+              {onSaveAs && (
+                <button onClick={() => handleAction(onSaveAs)} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
+                  Save As...
+                </button>
+              )}
+              <button onClick={() => handleAction(onExport)} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
+                Export to Image...
               </button>
               {onCloseDocument && (
                 <>
-                  <div className="h-px bg-lumvale-border my-1"></div>
-                  <button onClick={() => handleAction(onCloseDocument)} className="w-full text-left px-4 py-1.5 text-red-500 hover:bg-red-500 hover:text-white">
+                  <div className="h-px bg-[var(--color-lumvale-border)] my-1"></div>
+                  <button onClick={() => handleAction(onCloseDocument)} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
                     Close Document
                   </button>
                 </>
               )}
+              {customFileMenuItems}
               {typeof window !== 'undefined' && (window as any).electronAPI?.quitApp && (
-                <button onClick={() => handleAction(() => (window as any).electronAPI.quitApp())} className="w-full text-left px-4 py-1.5 text-red-500 hover:bg-red-500 hover:text-white">
+                <button onClick={() => handleAction(() => (window as any).electronAPI.quitApp())} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
                   Exit App
                 </button>
               )}
@@ -126,53 +142,65 @@ export default function TopBar({
 
         <div className="relative h-full flex items-center">
           <button 
-            className={`px-3 h-full flex items-center transition-colors ${activeMenu === 'tools' ? 'bg-lumvale-border text-white' : 'text-lumvale-muted hover:bg-lumvale-border hover:text-white'}`}
+            className={`px-3 h-full flex items-center transition-colors ${activeMenu === 'tools' ? 'bg-[var(--color-lumvale-border)] text-[var(--color-lumvale-text)]' : 'text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)]'}`}
             onClick={() => toggleMenu('tools')}
           >
             Tools
           </button>
           {activeMenu === 'tools' && (
-            <div className="absolute top-full left-0 mt-0 w-48 bg-lumvale-surface border border-lumvale-border shadow-2xl rounded-b-md py-1">
+            <div className="absolute top-full left-0 mt-0 w-48 bg-[var(--color-lumvale-surface)] border border-[var(--color-lumvale-border)] shadow-2xl rounded-b-md py-1">
+              {/* Page-level operations — available regardless of edit mode. */}
+              <button onClick={() => handleAction(onExtract)} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
+                Extract Pages...
+              </button>
+              <button onClick={() => handleAction(onSplit)} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
+                Split Document...
+              </button>
+              <div className="h-px bg-[var(--color-lumvale-border)] my-1"></div>
               {isEditMode ? (
                 <>
                   <button 
                     onClick={() => handleAction(onCompress)} 
                     disabled={isCompressing}
-                    className="w-full text-left px-4 py-1.5 text-lumvale-text hover:bg-lumvale-primary hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isCompressing ? 'Compressing...' : 'Compress / Optimize...'}
                   </button>
-                  <button onClick={() => handleAction(onWatermark)} className="w-full text-left px-4 py-1.5 text-lumvale-text hover:bg-lumvale-primary hover:text-white">
+                  <button onClick={() => handleAction(onWatermark)} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
                     Add Watermark...
                   </button>
-                  <div className="h-px bg-lumvale-border my-1"></div>
-                  <button onClick={() => handleAction(onMetadata)} className="w-full text-left px-4 py-1.5 text-lumvale-text hover:bg-lumvale-primary hover:text-white">
+                  <div className="h-px bg-[var(--color-lumvale-border)] my-1"></div>
+                  <button onClick={() => handleAction(onMetadata)} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
                     Edit Metadata...
                   </button>
-                  <button onClick={() => handleAction(onEncrypt)} className="w-full text-left px-4 py-1.5 text-lumvale-text hover:bg-lumvale-primary hover:text-white">
+                  <button onClick={() => handleAction(onEncrypt)} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
                     Encrypt / Lock...
                   </button>
                 </>
               ) : (
-                <div className="px-4 py-2 text-xs text-lumvale-muted italic">
+                <div className="px-4 py-2 text-xs text-[var(--color-lumvale-muted)] italic">
                   Enable Edit Mode to unlock tools
                 </div>
               )}
+              {customToolsMenuItems}
             </div>
           )}
         </div>
 
         <div className="relative h-full flex items-center">
           <button 
-            className={`px-3 h-full flex items-center transition-colors ${activeMenu === 'help' ? 'bg-lumvale-border text-white' : 'text-lumvale-muted hover:bg-lumvale-border hover:text-white'}`}
+            className={`px-3 h-full flex items-center transition-colors ${activeMenu === 'help' ? 'bg-[var(--color-lumvale-border)] text-[var(--color-lumvale-text)]' : 'text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)]'}`}
             onClick={() => toggleMenu('help')}
           >
             Help
           </button>
           {activeMenu === 'help' && (
-            <div className="absolute top-full left-0 mt-0 w-48 bg-lumvale-surface border border-lumvale-border shadow-2xl rounded-b-md py-1">
-              <button onClick={() => handleAction(onCheckUpdates)} className="w-full text-left px-4 py-1.5 text-lumvale-text hover:bg-lumvale-primary hover:text-white">
+            <div className="absolute top-full left-0 mt-0 w-48 bg-[var(--color-lumvale-surface)] border border-[var(--color-lumvale-border)] shadow-2xl rounded-b-md py-1">
+              <button onClick={() => handleAction(onCheckUpdates)} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
                 Check for Updates...
+              </button>
+              <button onClick={() => handleAction(() => {})} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
+                About Lumvale
               </button>
             </div>
           )}
@@ -192,6 +220,8 @@ export default function TopBar({
             Install App
           </button>
         )}
+        
+        {customTopBarRight}
 
         <button 
           onClick={toggleTheme}
