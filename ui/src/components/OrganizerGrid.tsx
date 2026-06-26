@@ -53,7 +53,7 @@ export default function OrganizerGrid({
                       >
                         <div className="text-xs text-lumvale-muted font-bold mb-2">Page {index + 1}</div>
                         
-                        <div className="relative w-32 h-40 flex items-center justify-center overflow-hidden bg-white/5 rounded">
+                        <div className="relative w-32 h-40 flex items-center justify-center overflow-hidden bg-[var(--color-lumvale-border)] rounded">
                           <PDFCanvas 
                             documentBytes={documentBytes}
                             pageNumber={pageNum}
@@ -66,14 +66,14 @@ export default function OrganizerGrid({
                         <div className="absolute inset-0 bg-lumvale-bg/80 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center gap-3 backdrop-blur-sm">
                           <button
                             onClick={(e) => { e.stopPropagation(); onRotate(index); }}
-                            className="p-2 bg-lumvale-primary hover:bg-lumvale-primary/80 text-white rounded-full shadow-lg transition-transform hover:scale-110"
+                            className="p-2 bg-lumvale-primary hover:bg-lumvale-primary/80 text-[var(--color-lumvale-text)] rounded-full shadow-lg transition-transform hover:scale-110"
                             title="Rotate Page"
                           >
                             <RotateCw size={18} />
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); onDelete(index); }}
-                            className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg transition-transform hover:scale-110"
+                            className="p-2 bg-red-500 hover:bg-red-600 text-[var(--color-lumvale-text)] rounded-full shadow-lg transition-transform hover:scale-110"
                             title="Delete Page"
                           >
                             <Trash2 size={18} />

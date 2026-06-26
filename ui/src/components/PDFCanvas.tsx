@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 
-// Configure the worker for Vite
+// Bundle the pdfjs worker locally (via Vite) so rendering works fully offline
+// instead of fetching it from a CDN at runtime.
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/legacy/build/pdf.worker.mjs',
   import.meta.url
@@ -319,7 +320,7 @@ export default function PDFCanvas({
         </div>
       )}
       {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-red-900/50 text-white p-4">
+        <div className="absolute inset-0 flex items-center justify-center bg-red-900/50 text-[var(--color-lumvale-text)] p-4">
           Failed to render: {error}
         </div>
       )}

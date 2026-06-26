@@ -24,7 +24,7 @@ export default function EncryptionModal({ onEncrypt, onClose }: EncryptionModalP
       <div className="bg-lumvale-surface border border-lumvale-border rounded-xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
         <div className="p-4 border-b border-lumvale-border flex justify-between items-center bg-[#0d1117]">
           <h2 className="text-xl font-bold text-lumvale-accent">Encrypt Document</h2>
-          <button onClick={onClose} className="text-lumvale-muted hover:text-white transition-colors">&times;</button>
+          <button onClick={onClose} className="text-lumvale-muted hover:text-[var(--color-lumvale-text)] transition-colors">&times;</button>
         </div>
         
         <form onSubmit={handleSubmit} className="p-6 space-y-6 flex-1 overflow-y-auto">
@@ -42,7 +42,7 @@ export default function EncryptionModal({ onEncrypt, onClose }: EncryptionModalP
                 value={userPassword}
                 onChange={(e) => setUserPassword(e.target.value)}
                 data-testid="meta-user-password"
-                className="w-full bg-black/30 border border-lumvale-border rounded p-2 text-white focus:border-lumvale-primary focus:outline-none transition-colors"
+                className="w-full bg-black/30 border border-lumvale-border rounded p-2 text-[var(--color-lumvale-text)] focus:border-lumvale-primary focus:outline-none transition-colors"
                 placeholder="Enter password to view..."
               />
             </div>
@@ -56,7 +56,7 @@ export default function EncryptionModal({ onEncrypt, onClose }: EncryptionModalP
                 value={ownerPassword}
                 onChange={(e) => setOwnerPassword(e.target.value)}
                 data-testid="meta-owner-password"
-                className="w-full bg-black/30 border border-lumvale-border rounded p-2 text-white focus:border-lumvale-primary focus:outline-none transition-colors"
+                className="w-full bg-black/30 border border-lumvale-border rounded p-2 text-[var(--color-lumvale-text)] focus:border-lumvale-primary focus:outline-none transition-colors"
                 placeholder="Enter password to edit..."
               />
             </div>
@@ -74,14 +74,14 @@ export default function EncryptionModal({ onEncrypt, onClose }: EncryptionModalP
         </form>
 
         <div className="p-4 border-t border-lumvale-border bg-[#0d1117] flex justify-end space-x-3">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-lumvale-muted hover:text-white transition-colors">
+          <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-lumvale-muted hover:text-[var(--color-lumvale-text)] transition-colors">
             Cancel
           </button>
           <button 
             type="submit"
             onClick={handleSubmit}
             disabled={!userPassword && !ownerPassword}
-            className="px-6 py-2 text-sm bg-lumvale-primary text-white rounded font-bold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 text-sm bg-lumvale-primary text-[var(--color-lumvale-text)] rounded font-bold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Lock PDF
           </button>

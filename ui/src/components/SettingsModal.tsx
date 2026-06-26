@@ -85,7 +85,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <div className="p-6 border-t border-lumvale-border bg-lumvale-bg/50 flex justify-end">
                 <button
                   onClick={handleSave}
-                  className="flex items-center space-x-2 bg-lumvale-primary hover:bg-lumvale-primary/90 text-white px-6 py-2.5 rounded-xl font-medium transition-all"
+                  className="flex items-center space-x-2 bg-lumvale-primary hover:bg-lumvale-primary/90 text-[var(--color-lumvale-text)] px-6 py-2.5 rounded-xl font-medium transition-all"
                 >
                   {isSaved ? (
                     <>
