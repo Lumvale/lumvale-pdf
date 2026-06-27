@@ -1,11 +1,10 @@
 /**
  * DocumentEngine — the port for PDF/document manipulation.
  *
- * Vendored copy of the `@lumvale/workspace-contracts` DocumentEngine port,
- * kept local so OSS @lumvale/pdf-ui depends only on public packages (a public
- * package may only depend on public packages). The commercial workspace imports
- * the same shape from the private contracts package; keeping this structurally
- * identical lets the OSS editor and the commercial shell stay easy to sync.
+ * A small, engine-agnostic interface that the workspace UI drives. The default
+ * implementation wraps @lumvale/pdf-core (see ./pdfCoreEngine); a host that
+ * needs different behavior — e.g. a server-backed engine — can supply its own
+ * adapter by implementing this same interface.
  *
  * Bytes-in / bytes-out: every operation takes the current document bytes and
  * resolves to new bytes, leaving the input untouched. Page indices are

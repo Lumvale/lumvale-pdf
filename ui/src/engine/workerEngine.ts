@@ -12,8 +12,8 @@ import { PDF_WORKER_CODE } from './pdfWorker.inline';
  * trip.
  *
  * The worker is inlined (see scripts/build-worker.mjs) and started from a Blob
- * URL, so this works in any bundler — Vite for our desktop app, Next.js/webpack
- * for hosts like Omnia — with no separate worker asset to resolve. Creation is
+ * URL, so this works in any bundler — Vite for the desktop app, Next.js/webpack
+ * for embedding hosts — with no separate worker asset to resolve. Creation is
  * lazy and guarded, so importing this module is safe during SSR; if the
  * environment has no Worker support we transparently fall back to running the
  * heavy ops on the main thread.

@@ -2,15 +2,12 @@ import type { DocumentEngine } from './port';
 import { createWorkerPdfEngine } from './workerEngine';
 
 /**
- * OSS engine wiring for @lumvale/pdf-ui.
+ * Engine wiring for @lumvale/pdf-ui.
  *
- * Unlike the commercial workspace — which injects a DocumentEngine through a
- * React context so a host can swap in a cloud engine — the OSS editor never
- * varies its engine: it always runs the local @lumvale/pdf-core. So we expose a
- * single shared instance and a trivial `useDocumentEngine()` hook that returns
- * it. The hook keeps component code identical in shape to the commercial
- * workspace (which uses a context hook of the same name), so the two editors
- * stay easy to diff and sync.
+ * The editor always runs the local @lumvale/pdf-core, so we expose a single
+ * shared instance and a trivial `useDocumentEngine()` hook that returns it. The
+ * hook keeps the call sites uniform, so swapping the engine implementation later
+ * (or injecting one) stays a one-line change.
  *
  * The default engine offloads heavy ops to an inlined Blob worker (see
  * workerEngine.ts) so large PDFs don't freeze the UI; it transparently falls
