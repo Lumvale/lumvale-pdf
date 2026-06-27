@@ -42,7 +42,7 @@ export default function AnnotationToolbar({
     <motion.div 
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      className="bg-vault-panel/80 backdrop-blur-md border-b border-[var(--color-lumvale-border)] p-2 flex items-center justify-between"
+      className="bg-[var(--color-lumvale-surface)]/80 backdrop-blur-md border-b border-[var(--color-lumvale-border)] p-2 flex items-center justify-between"
     >
       <div className="flex items-center space-x-4">
         {/* Tools */}
@@ -50,21 +50,21 @@ export default function AnnotationToolbar({
           
           <button 
             onClick={() => onToolSelect(activeTool === 'ink' ? null : 'ink')}
-            className={`p-2 rounded-md transition-colors flex items-center justify-center ${activeTool === 'ink' ? 'bg-[var(--color-lumvale-primary)] text-[var(--color-lumvale-text)]' : 'text-[var(--color-lumvale-muted)] hover:text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-border)]'}`}
+            className={`p-2 rounded-md transition-colors flex items-center justify-center ${activeTool === 'ink' ? 'bg-[var(--color-lumvale-primary)] text-[var(--color-lumvale-bg)]' : 'text-[var(--color-lumvale-muted)] hover:text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-border)]'}`}
             title="Pen Tool"
           >
             <PenTool size={18} />
           </button>
           <button 
             onClick={() => onToolSelect(activeTool === 'highlight' ? null : 'highlight')}
-            className={`p-2 rounded-md transition-colors flex items-center justify-center ${activeTool === 'highlight' ? 'bg-[var(--color-lumvale-primary)] text-[var(--color-lumvale-text)]' : 'text-[var(--color-lumvale-muted)] hover:text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-border)]'}`}
+            className={`p-2 rounded-md transition-colors flex items-center justify-center ${activeTool === 'highlight' ? 'bg-[var(--color-lumvale-primary)] text-[var(--color-lumvale-bg)]' : 'text-[var(--color-lumvale-muted)] hover:text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-border)]'}`}
             title="Highlighter"
           >
             <Highlighter size={18} />
           </button>
           <button 
             onClick={() => onToolSelect(activeTool === 'text' ? null : 'text')}
-            className={`p-2 rounded-md transition-colors flex items-center justify-center ${activeTool === 'text' ? 'bg-[var(--color-lumvale-primary)] text-[var(--color-lumvale-text)]' : 'text-[var(--color-lumvale-muted)] hover:text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-border)]'}`}
+            className={`p-2 rounded-md transition-colors flex items-center justify-center ${activeTool === 'text' ? 'bg-[var(--color-lumvale-primary)] text-[var(--color-lumvale-bg)]' : 'text-[var(--color-lumvale-muted)] hover:text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-border)]'}`}
             title="Text Tool"
           >
             <Type size={18} />
