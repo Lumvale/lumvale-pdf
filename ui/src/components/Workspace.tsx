@@ -497,10 +497,18 @@ export default function Workspace({
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       const buffer = await file.arrayBuffer();
-      setSourceBytes(new Uint8Array(buffer));
-      setMergeMode(true);
+      const newBytes = new Uint8Array(buffer);
+      try {
+        const count = await docEngine.getPageCount(newBytes);
+        setSourceBytes(newBytes);
+        setSourcePageCount(count);
+        setMergeMode(true); // Launch merge UI
+      } catch (err) {
+        console.error(err);
+        alert('Failed to load second PDF.');
+      }
     }
-    
+
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -724,6 +732,30 @@ export default function Workspace({
             >
               {showSidebar && (
                 <div className="flex-1 flex flex-col w-64 min-w-[256px] overflow-hidden">
+                  <div className="p-4 border-b border-[var(--color-lumvale-border)] flex justify-between items-center">
+                    <span className="font-bold text-lg text-[var(--color-lumvale-text)]">Pages ({pageCount})</span>
+                    {extractMode && (
+                      <span className="text-sm font-normal text-green-500 bg-green-500/20 px-2 py-0.5 rounded">
+                        {selectedPages.size} Selected
+                      </span>
+                    )}
+                  </div>
+                  {extractMode && activeSidebarTab === 'thumbnails' && (
+                    <div className="p-2 flex flex-col gap-2 border-b border-[var(--color-lumvale-border)]">
+                      <button
+                        onClick={handleExtractConfirm}
+                        className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-1.5 rounded text-sm transition-colors"
+                      >
+                        Download Selected
+                      </button>
+                      <button
+                        onClick={() => { setExtractMode(false); setSelectedPages(new Set()); }}
+                        className="w-full bg-transparent hover:bg-red-500/20 text-red-400 py-1.5 rounded text-sm transition-colors border border-red-500/30"
+                      >
+                        Cancel Extraction
+                      </button>
+                    </div>
+                  )}
                   <div className="flex border-b border-[var(--color-lumvale-border)]">
                     <button
                       onClick={() => setActiveSidebarTab('thumbnails')}
@@ -776,6 +808,12 @@ export default function Workspace({
                         }}
                         scrollContainerRef={scrollContainerRef}
                         isEditMode={isEditMode}
+                        extractMode={extractMode}
+                        selectedPages={selectedPages}
+                        onToggleSelect={handleToggleSelect}
+                        onReorder={handleReorderPages}
+                        onDelete={handleDeletePage}
+                        onRotate={handleRotatePage}
                       />
                     ) : (
                       <Bookmarks 
@@ -807,8 +845,9 @@ export default function Workspace({
             </div>
             
             <div className="flex-1 flex flex-col min-w-0">
-              <div 
+              <div
                 ref={scrollContainerRef}
+                id="main-scroll-container"
                 className="flex-1 overflow-y-auto w-full flex justify-center custom-scrollbar"
               >
                 <div 
