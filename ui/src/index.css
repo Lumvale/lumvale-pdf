@@ -1,34 +1,53 @@
 @import "tailwindcss";
 
+/* ───────────────────────────────────────────────────────────────────────────
+ * Design tokens — VENDORED from @lumvale/storybook (the canonical source of
+ * truth). OSS pdf-ui is a public package and cannot depend on the private
+ * @lumvale/storybook, so we carry a synced copy of its token VALUES here.
+ * Keep in sync with storybook/tokens/*.json. The --theme-* vars flip between
+ * light and dark; @theme maps the Tailwind color utilities onto them.
+ * ─────────────────────────────────────────────────────────────────────────── */
 @theme {
   --color-lumvale-bg: var(--theme-bg);
   --color-lumvale-surface: var(--theme-surface);
   --color-lumvale-border: var(--theme-border);
-  --color-lumvale-primary: var(--theme-primary);
-  --color-lumvale-accent: var(--theme-accent);
-  --color-lumvale-text: var(--theme-text);
   --color-lumvale-muted: var(--theme-muted);
+  --color-lumvale-primary: var(--theme-primary);
+  --color-lumvale-primary-light: var(--theme-primary-light);
+  --color-lumvale-accent: var(--theme-accent);
+  --color-lumvale-accent-light: var(--theme-accent-light);
+  --color-lumvale-mint: var(--theme-mint);
+  --color-lumvale-mint-light: var(--theme-mint-light);
+  --color-lumvale-text: var(--theme-text);
 }
 
 @layer base {
   :root {
     --theme-bg: #FBFAF6;
+    --theme-text: #15110B;
     --theme-surface: #FFFFFF;
     --theme-border: #ECEAE3;
-    --theme-primary: #15564F;
-    --theme-accent: #C07C18;
-    --theme-text: #15110B;
     --theme-muted: #6E6A5C;
+    --theme-primary: #15564F;
+    --theme-primary-light: #2E9B84;
+    --theme-accent: #C07C18;
+    --theme-accent-light: #F1C45E;
+    --theme-mint: #7FD3C6;
+    --theme-mint-light: #4FB89A;
+    --color-lumvale-shadow: 0 4px 6px rgba(21, 17, 11, 0.05), 0 1px 3px rgba(21, 17, 11, 0.1);
   }
 
-  .dark {
-    --theme-bg: #0b0f19;
-    --theme-surface: #131b2c;
-    --theme-border: #6E6A5C;
-    --theme-primary: #4FB89A;
-    --theme-accent: #F1C45E;
+  .dark, [data-theme="dark"] {
+    --theme-bg: #15110B;
     --theme-text: #FBFAF6;
+    --theme-surface: #3A352B;
+    --theme-border: #6E6A5C;
     --theme-muted: #A3A095;
+    --theme-primary: #4FB89A;
+    --theme-primary-light: #7FD3C6;
+    --theme-accent: #F1C45E;
+    --theme-accent-light: #C07C18;
+    --color-lumvale-shadow: 0 4px 6px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.5);
   }
 
   /* Give the standalone app shell a bounded, viewport-sized height so the
