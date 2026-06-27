@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./fx.css";
 
 /* ───────────────────────────────────────────────────────────────────────────
  * Design tokens — VENDORED from @lumvale/storybook (the canonical source of
