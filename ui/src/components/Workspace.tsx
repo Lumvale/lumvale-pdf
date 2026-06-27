@@ -597,11 +597,8 @@ export default function Workspace({
         isCompressing={isCompressing}
         isEditMode={isEditMode}
         onCloseDocument={onCloseDocument}
-        onSave={() => setSaveModalOpen(true)}
-        onSaveAs={() => {
-          setSaveAction('saveAs');
-          setSaveModalOpen(true);
-        }}
+        onSave={handleSave}
+        onSaveAs={handleSaveAs}
         customFileMenuItems={customFileMenuItems}
         customToolsMenuItems={customToolsMenuItems}
         customTopBarRight={customTopBarRight}
@@ -697,7 +694,7 @@ export default function Workspace({
         />
       )}
       
-      <div className="flex-1 flex overflow-hidden bg-[var(--color-lumvale-bg)] relative z-10">
+      <div className="flex-1 flex overflow-hidden bg-[var(--color-lumvale-bg)] relative z-10 min-h-0">
         {!documentBytes ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8">
             <div 
@@ -780,9 +777,13 @@ export default function Workspace({
                       Bookmarks
                     </button>
                   </div>
-                  <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+                  <div
+                    ref={sidebarScrollRef}
+                    data-testid="sidebar-scroll-container"
+                    className="flex-1 overflow-y-auto custom-scrollbar p-4"
+                  >
                     {activeSidebarTab === 'thumbnails' ? (
-                      <Sidebar 
+                      <Sidebar
                         documentBytes={documentBytes!}
                         pageOrder={pageOrder}
                         currentPage={currentPage}
@@ -806,7 +807,7 @@ export default function Workspace({
                             }, 1000);
                           }
                         }}
-                        scrollContainerRef={scrollContainerRef}
+                        scrollContainerRef={sidebarScrollRef}
                         isEditMode={isEditMode}
                         extractMode={extractMode}
                         selectedPages={selectedPages}
@@ -844,11 +845,11 @@ export default function Workspace({
               )}
             </div>
             
-            <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex-1 flex flex-col min-w-0 min-h-0">
               <div
                 ref={scrollContainerRef}
                 id="main-scroll-container"
-                className="flex-1 overflow-y-auto w-full flex justify-center custom-scrollbar"
+                className="flex-1 min-h-0 overflow-y-auto w-full flex justify-center custom-scrollbar"
               >
                 <div 
                   className="py-8 flex flex-col space-y-4"
