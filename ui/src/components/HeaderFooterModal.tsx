@@ -96,7 +96,7 @@ export default function HeaderFooterModal({ pageCount, onApply, onClose }: Heade
             <PanelTop className="w-5 h-5 text-lumvale-primary" />
             <h2 className="font-bold text-lg">Headers & Footers</h2>
           </div>
-          <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-full transition-colors">
+          <button onClick={onClose} className="p-1 hover:bg-[var(--color-lumvale-border)] rounded-full transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -235,14 +235,14 @@ export default function HeaderFooterModal({ pageCount, onApply, onClose }: Heade
         <div className="p-4 border-t border-lumvale-border bg-lumvale-surface/50 flex justify-end gap-3">
           <button 
             onClick={onClose}
-            className="px-4 py-2 rounded text-sm font-medium hover:bg-white/5 transition-colors"
+            className="px-4 py-2 rounded text-sm font-medium hover:bg-[var(--color-lumvale-border)] transition-colors"
           >
             Cancel
           </button>
           <button 
             onClick={handleApply}
             disabled={isApplying}
-            className="px-4 py-2 rounded text-sm font-bold bg-lumvale-primary hover:bg-lumvale-primary/90 text-white transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="px-4 py-2 rounded text-sm font-bold bg-lumvale-primary hover:bg-lumvale-primary/90 text-[var(--color-lumvale-text)] transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {isApplying ? "Applying..." : "Apply"}
           </button>

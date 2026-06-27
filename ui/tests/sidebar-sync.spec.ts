@@ -104,8 +104,10 @@ test.describe('Sidebar Sync — active page feedback', () => {
     await page.getByTestId('thumbnail-page-2').click();
     await expect(page.getByTestId('thumbnail-page-2')).toHaveAttribute('data-active', 'true', { timeout: 5000 });
 
-    // The label div inside thumbnail-page-2 should have 'Page 2' text and the bold+white styling
-    const label = page.getByTestId('thumbnail-page-2').locator('div.text-white.font-bold');
+    // The label div inside thumbnail-page-2 should have 'Page 2' text and the
+    // bold active styling (the active color is a theme token, so assert on the
+    // font-bold class rather than a hard-coded color).
+    const label = page.getByTestId('thumbnail-page-2').locator('div.font-bold');
     await expect(label.filter({ hasText: 'Page 2' })).toBeVisible();
     await expect(label.filter({ hasText: 'Page 2' })).toContainText('Page 2');
 

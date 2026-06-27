@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, startTransition } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from './Sidebar';
 import PDFCanvas from './PDFCanvas';
 import { LumvalePDFEngine } from '@lumvale/pdf-core';
@@ -20,68 +20,26 @@ import { LayoutGrid, Bookmark } from 'lucide-react';
 import SaveModal from './SaveModal';
 import AnnotationToolbar from './AnnotationToolbar';
 import type { Annotation, AnnotationType } from './AnnotationOverlay';
-import PdfWorker from '../workers/pdf.worker?worker';
+import { useDocumentEngine } from '../engine';
 
-/** How many pages on each side of the current page keep a live PDFCanvas
- *  mounted in the main viewer. Pages outside this window render a placeholder.
- *  Large enough to cover a tall viewport plus a scroll buffer in both
- *  directions; small enough that editing/re-rendering stays cheap. */
 const MAIN_VIEWER_WINDOW = 6;
 
-let sharedWorker: Worker | null = null;
-const workerCallbacks = new Map<string, { resolve: Function, reject: Function, onProgress?: (msg: string) => void }>();
-
-const getWorker = () => {
-  if (!sharedWorker) {
-    sharedWorker = new PdfWorker();
-    sharedWorker.onmessage = (e) => {
-      // Worker message received
-      const { id, success, resultBytes, error, progress } = e.data;
-      const cb = workerCallbacks.get(id);
-      if (cb) {
-        if (progress) {
-          if (cb.onProgress) cb.onProgress(progress);
-        } else {
-          workerCallbacks.delete(id);
-          if (success) {
-            cb.resolve(resultBytes);
-          } else {
-            cb.reject(new Error(error));
-          }
-        }
-      }
-    };
-    sharedWorker.onerror = (err) => {
-      console.error('Worker error:', err);
-      // If the worker crashes, reject all pending jobs to unfreeze UI
-      workerCallbacks.forEach(cb => cb.reject(new Error('Worker crashed. Document might be too complex or large.')));
-      workerCallbacks.clear();
-      sharedWorker?.terminate();
-      sharedWorker = null; // Respawn on next action
-    };
-  }
-  return sharedWorker;
-};
-
-const runWorker = (action: string, payload: any, onProgress?: (msg: string) => void): Promise<Uint8Array> => {
-  return new Promise((resolve, reject) => {
-    const worker = getWorker();
-    const id = Math.random().toString(36);
-    workerCallbacks.set(id, { resolve, reject, onProgress });
-    
-    // Explicitly clone the documentBytes buffer to avoid extremely slow structured cloning on some browsers
-    const clonedBuffer = payload.documentBytes.slice().buffer;
-    const newPayload = { ...payload, documentBytes: new Uint8Array(clonedBuffer) };
-    
-    worker.postMessage({ id, action, payload: newPayload }, [clonedBuffer]);
-  });
-};
-
-
-interface WorkspaceProps {
-  documentBytes: Uint8Array;
+export interface WorkspaceProps {
+  documentBytes: Uint8Array | null;
+  documentName?: string;
   pageCount: number;
+  onFilesSelected?: (files: FileList | File[]) => void;
   onCloseDocument?: () => void;
+  hideLoginButton?: boolean;
+  customToolbarLeft?: React.ReactNode;
+  customToolbarCenter?: React.ReactNode;
+  customToolbarRight?: React.ReactNode;
+  customFileMenuItems?: React.ReactNode;
+  customToolsMenuItems?: React.ReactNode;
+  customTopBarRight?: React.ReactNode;
+  customTabBar?: React.ReactNode;
+  onSave?: () => void;
+  rightSidebar?: React.ReactNode;
 }
 
 /**
@@ -95,9 +53,32 @@ interface WorkspaceProps {
  * - Annotation state management and Save/Export logic
  * - Virtualized or optimized scrolling container for PDFCanvas instances
  */
-export default function Workspace({ documentBytes: initialBytes, pageCount: initialCount, onCloseDocument }: WorkspaceProps) {
-  const [documentBytes, setDocumentBytes] = useState<Uint8Array>(initialBytes);
+export default function Workspace({ 
+  documentBytes: initialBytes, 
+  documentName = 'document.pdf',
+  pageCount: initialCount, 
+  onCloseDocument,
+  customToolbarLeft,
+  customToolbarCenter,
+  customToolbarRight,
+  customFileMenuItems,
+  customToolsMenuItems,
+  customTopBarRight,
+  customTabBar,
+  onFilesSelected,
+  onSave,
+  rightSidebar
+}: WorkspaceProps) {
+  // Injected document engine (defaults to the local @lumvale/pdf-core adapter
+  // when no WorkspaceProvider is present). A host can inject a different one.
+  const docEngine = useDocumentEngine();
+  const [documentBytes, setDocumentBytes] = useState<Uint8Array | null>(initialBytes);
   const [pageCount, setPageCount] = useState<number>(initialCount);
+  
+  useEffect(() => {
+    setDocumentBytes(initialBytes);
+    setPageCount(initialCount);
+  }, [initialBytes, initialCount]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageOrder, setPageOrder] = useState<number[]>([]);
   const [showSidebar, setShowSidebar] = useState(true);
@@ -118,7 +99,23 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
   const [activeAnnotationStrokeWidth, setActiveAnnotationStrokeWidth] = useState(4);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [isSaveModalOpen, setSaveModalOpen] = useState(false);
+  const [saveAction, setSaveAction] = useState<'save' | 'saveAs' | null>(null);
+  
+  const [mergeMode, setMergeMode] = useState(false);
+  const [sourceBytes, setSourceBytes] = useState<Uint8Array | null>(null);
+  const [sourcePageCount, setSourcePageCount] = useState<number>(0);
+  
+  const [extractMode, setExtractMode] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [showMetadata, setShowMetadata] = useState(false);
+  const [currentMetadata, setCurrentMetadata] = useState<any>(null);
+  const [showEncryption, setShowEncryption] = useState(false);
+  const [selectedPages, setSelectedPages] = useState<Set<number>>(new Set());
+  const [showSplitModal, setShowSplitModal] = useState(false);
+  const [showWatermarkModal, setShowWatermarkModal] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const openFileInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   /** Ref to the overflow-y-auto sidebar container — passed to Sidebar so it
    *  can check real bounds before calling scrollIntoView (Bug 1 fix). */
@@ -209,31 +206,122 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
     URL.revokeObjectURL(url);
   };
 
-  const handleExport = async () => {
+  const generateFinalPdfBytes = async (asNative: boolean = true): Promise<Uint8Array> => {
+    const engine = new LumvalePDFEngine();
+    await engine.loadDocument(documentBytes!);
+
+    // 1. Apply Annotations
+    if (annotations.length > 0) {
+      const annByPage = new Map<number, Annotation[]>();
+      for (const ann of annotations) {
+        if (!annByPage.has(ann.pageIndex)) annByPage.set(ann.pageIndex, []);
+        annByPage.get(ann.pageIndex)!.push(ann);
+      }
+      
+      for (const [pageIndex, pageAnns] of annByPage.entries()) {
+        const redactions = pageAnns.filter(a => a.type === 'redact');
+        const others = pageAnns.filter(a => a.type !== 'redact');
+        
+        if (redactions.length > 0) {
+          const imageBytes = await rasterizePageWithRedactions(documentBytes!, pageIndex + 1, redactions);
+          await engine.replacePageWithImage(pageIndex, imageBytes, false);
+        }
+
+        if (others.length > 0) {
+          if (asNative) {
+            engine.addNativeAnnotations(pageIndex, others);
+          } else {
+            engine.addFlattenedAnnotations(pageIndex, others);
+          }
+        }
+      }
+    }
+
+    // 2. Extract/Reorder Pages
+    const indices = pageOrder.map(p => p - 1);
+    const extractedDoc = await engine.extractPages(indices);
+    return await extractedDoc.save();
+  };
+
+  const executeSave = async (asNative: boolean = true) => {
     try {
-      const engine = new LumvalePDFEngine();
-      await engine.loadDocument(documentBytes);
+      console.log("executeSave started");
+      const newBytes = await generateFinalPdfBytes(asNative);
+      console.log("generateFinalPdfBytes completed, updating documentBytes");
+      setDocumentBytes(newBytes);
+      setAnnotations([]);
+      const newPageCount = pageOrder.length;
+      setPageOrder(Array.from({ length: newPageCount }, (_, i) => i + 1));
       
-      // Export pages in the exact order specified by pageOrder
-      // Convert to 0-based index for the engine
-      const indices = pageOrder.map(p => p - 1);
-      
-      const extractedDoc = await engine.extractPages(indices);
-      const newBytes = await extractedDoc.save();
-      
-      downloadPdf(newBytes as any);
+      if (onSave) {
+        onSave();
+      }
+      console.log("executeSave completed");
     } catch (err) {
       console.error(err);
-      alert('Failed to export document.');
+      alert('Failed to save document.');
     }
   };
 
-  const handleSaveAndDownload = () => {
+  const executeSaveAs = async (asNative: boolean = true, fileName: string = 'lumvalepdf-export.pdf') => {
+    try {
+      console.log("executeSaveAs started");
+      const newBytes = await generateFinalPdfBytes(asNative);
+      console.log("generateFinalPdfBytes completed, initiating download...");
+      
+      const blob = new Blob([newBytes as any], { type: 'application/pdf' });
+
+      if ('showSaveFilePicker' in window) {
+        try {
+          const handle = await (window as any).showSaveFilePicker({
+            suggestedName: fileName,
+            types: [{
+              description: 'PDF Document',
+              accept: { 'application/pdf': ['.pdf'] },
+            }],
+          });
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          console.log("executeSaveAs completed using showSaveFilePicker");
+          return;
+        } catch (err: any) {
+          // AbortError means user cancelled the dialog
+          if (err.name === 'AbortError') return;
+          console.error('showSaveFilePicker failed, falling back', err);
+        }
+      }
+      
+      // Fallback
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+      console.log("executeSaveAs completed using fallback");
+    } catch (err) {
+      console.error(err);
+      alert('Failed to save document as copy.');
+    }
+  };
+
+  const handleSave = () => {
     if (annotations.length > 0) {
+      setSaveAction('save');
       setSaveModalOpen(true);
     } else {
-      handleExport();
+      executeSave(true);
     }
+  };
+
+  const handleSaveAs = () => {
+    setSaveAction('saveAs');
+    setSaveModalOpen(true);
+  };
+
+  const handleExport = () => {
+    alert('Export to formats other than PDF is coming soon! For now, use "Save As..." to export the PDF.');
   };
 
   const handleReorderPages = (startIndex: number, endIndex: number) => {
@@ -262,11 +350,7 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
   const handleRotatePage = async (index: number) => {
     try {
       const actualPageIndex = pageOrder[index] - 1;
-      const engine = new LumvalePDFEngine();
-      await engine.loadDocument(documentBytes);
-      engine.rotatePage(actualPageIndex, 90);
-      const newBytes = await engine.exportBytes();
-      
+      const newBytes = await docEngine.rotatePage(documentBytes!, actualPageIndex, 90);
       setDocumentBytes(newBytes);
     } catch (err) {
       console.error(err);
@@ -274,139 +358,19 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
     }
   };
 
-  const [mergeMode, setMergeMode] = useState(false);
-  const [sourceBytes, setSourceBytes] = useState<Uint8Array | null>(null);
-  const [sourcePageCount, setSourcePageCount] = useState<number>(0);
-  
-  const [extractMode, setExtractMode] = useState(false);
-  const [selectedPages, setSelectedPages] = useState<Set<number>>(new Set());
-  const [isCompressing, setIsCompressing] = useState(false);
-
-  const [showMetadata, setShowMetadata] = useState(false);
-  const [currentMetadata, setCurrentMetadata] = useState<PDFMetadata | null>(null);
-  const [showEncryption, setShowEncryption] = useState(false);
-  const [showOCRModal, setShowOCRModal] = useState(false);
-
-  const handleOpenMetadata = async () => {
-    try {
-      const engine = new LumvalePDFEngine();
-      await engine.loadDocument(documentBytes);
-      setCurrentMetadata(engine.getMetadata());
-      setShowMetadata(true);
-    } catch (err) {
-      console.error(err);
-      alert('Failed to read metadata.');
-    }
-  };
-
-  const handleSaveMetadata = async (metadata: Partial<PDFMetadata>) => {
-    try {
-      const engine = new LumvalePDFEngine();
-      await engine.loadDocument(documentBytes);
-      engine.updateMetadata(metadata);
-      const newBytes = await engine.exportBytes();
-      setDocumentBytes(newBytes);
-      setShowMetadata(false);
-    } catch (err) {
-      console.error(err);
-      alert('Failed to save metadata.');
-    }
-  };
-
-  const [showSplitModal, setShowSplitModal] = useState(false);
-  const [showWatermarkModal, setShowWatermarkModal] = useState(false);
   const [showBatesModal, setShowBatesModal] = useState(false);
   const [showHeaderFooterModal, setShowHeaderFooterModal] = useState(false);
 
-  const handleApplyWatermark = async (options: any) => {
-    try {
-      const newBytes = await runWorker('watermark', { documentBytes, options });
-      setShowWatermarkModal(false);
-      requestAnimationFrame(() => {
-        startTransition(() => setDocumentBytes(newBytes));
-      });
-    } catch (err) {
-      console.error(err);
-      alert('Failed to apply watermark.');
-    }
-  };
-
-  const handleApplyBates = async (options: any, onProgress?: (msg: string) => void) => {
-    try {
-      const newBytes = await runWorker('bates', { documentBytes, options }, onProgress);
-      // Close the modal immediately (high-priority update)
-      setShowBatesModal(false);
-      // Yield to the browser so the modal removal paints, THEN update the bytes
-      // in a low-priority transition so the UI stays responsive during re-render.
-      requestAnimationFrame(() => {
-        startTransition(() => {
-          setDocumentBytes(newBytes);
-        });
-      });
-    } catch (err) {
-      console.error('Failed to apply page numbering:', err);
-      alert('Failed to apply page numbering.');
-    }
-  };
-
-  const handleApplyHeadersFooters = async (options: any) => {
-    try {
-      const newBytes = await runWorker('headersFooters', { documentBytes, options });
-      setShowHeaderFooterModal(false);
-      requestAnimationFrame(() => {
-        startTransition(() => setDocumentBytes(newBytes));
-      });
-    } catch (err) {
-      console.error(err);
-      alert('Failed to apply headers and footers.');
-    }
-  };
-
-  const handleEncryptDocument = async (userPassword?: string, ownerPassword?: string) => {
-    try {
-      const encryptedBytes = await runWorker('encrypt', { documentBytes, userPassword, ownerPassword });
-      
-      const blob = new Blob([encryptedBytes as any], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'lumvalepdf-locked.pdf';
-      a.click();
-      URL.revokeObjectURL(url);
-      
-      setShowEncryption(false);
-    } catch (err) {
-      console.error(err);
-      alert('Failed to encrypt document.');
-    }
-  };
-
-
-  const handleCheckUpdates = async () => {
-    try {
-      // Use any to bypass TS error since electronAPI isn't typed globally
-      const hasUpdate = await (window as any).electronAPI?.checkForUpdates();
-      if (!hasUpdate) {
-        alert('LumvalePDF is up to date! (Or update check failed)');
-      } else {
-        alert('Update downloaded! It will be installed automatically on restart.');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Failed to check for updates.');
-    }
-  };
-  
   const handleCompress = async () => {
     setIsCompressing(true);
     try {
-      const originalSize = documentBytes.byteLength;
+      const originalSize = documentBytes!.byteLength;
       
-      const compressedBytes = await runWorker('compress', { documentBytes });
+      const compressedBytes = await docEngine.compress(documentBytes!);
       const compressedSize = compressedBytes.byteLength;
-      
-      setDocumentBytes(compressedBytes);
-      
+
+      startTransition(() => setDocumentBytes(compressedBytes));
+
       const savedKb = ((originalSize - compressedSize) / 1024).toFixed(2);
       const originalKb = (originalSize / 1024).toFixed(2);
       const newKb = (compressedSize / 1024).toFixed(2);
@@ -418,6 +382,73 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
     } finally {
       setIsCompressing(false);
     }
+  };
+
+  const handleOpenMetadata = async () => {
+    const meta = await docEngine.getMetadata(documentBytes!);
+    setCurrentMetadata(meta);
+    setShowMetadata(true);
+  };
+
+  const handleSaveMetadata = async (newMetadata: PDFMetadata) => {
+    const newBytes = await docEngine.setMetadata(documentBytes!, newMetadata);
+    setDocumentBytes(newBytes);
+    setShowMetadata(false);
+  };
+
+  const handleEncryptDocument = async (userPass?: string, ownerPass?: string) => {
+    const encryptedBytes = await docEngine.encrypt(documentBytes!, {
+      userPassword: userPass,
+      ownerPassword: ownerPass,
+    });
+    setDocumentBytes(encryptedBytes);
+    setShowEncryption(false);
+  };
+
+  const handleApplyWatermark = async (options: any) => {
+    try {
+      const watermarkedBytes = await docEngine.addWatermark(documentBytes!, options);
+      // Close the modal first (high-priority update), then yield to the browser
+      // so the removal paints before the heavy document re-render runs as a
+      // low-priority transition. Keeps the UI responsive on large files.
+      setShowWatermarkModal(false);
+      requestAnimationFrame(() => {
+        startTransition(() => setDocumentBytes(watermarkedBytes));
+      });
+    } catch (err) {
+      console.error(err);
+      alert('Failed to apply watermark.');
+    }
+  };
+
+  const handleApplyBates = async (options: any) => {
+    try {
+      const batesBytes = await docEngine.addBatesNumbering(documentBytes!, options);
+      setShowBatesModal(false);
+      requestAnimationFrame(() => {
+        startTransition(() => setDocumentBytes(batesBytes));
+      });
+    } catch (err) {
+      console.error('Failed to apply page numbering:', err);
+      alert('Failed to apply page numbering.');
+    }
+  };
+
+  const handleApplyHeadersFooters = async (options: any) => {
+    try {
+      const hfBytes = await docEngine.addHeadersFooters(documentBytes!, options);
+      setShowHeaderFooterModal(false);
+      requestAnimationFrame(() => {
+        startTransition(() => setDocumentBytes(hfBytes));
+      });
+    } catch (err) {
+      console.error(err);
+      alert('Failed to apply headers and footers.');
+    }
+  };
+
+  const handleCheckUpdates = () => {
+    alert('You are up to date!');
   };
 
   const handleToggleSelect = (page: number) => {
@@ -439,15 +470,9 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
     }
 
     try {
-      const engine = new LumvalePDFEngine();
-      await engine.loadDocument(documentBytes);
-      
-      // Convert to 0-based index and sort
       const indices = Array.from(selectedPages).map(p => p - 1).sort((a, b) => a - b);
-      
-      const extractedDoc = await engine.extractPages(indices);
-      const newBytes = await extractedDoc.save();
-      
+      const newBytes = await docEngine.extractPages(documentBytes!, indices);
+
       const blob = new Blob([newBytes as any], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -469,44 +494,45 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
       const buffer = await file.arrayBuffer();
       const newBytes = new Uint8Array(buffer);
-      
-      const engine = new LumvalePDFEngine();
-      const tempDoc = await engine.loadDocument(newBytes);
-      
-      setSourceBytes(newBytes);
-      setSourcePageCount(tempDoc.getPageCount());
-      setMergeMode(true); // Launch merge UI
-      
-    } catch (err) {
-      console.error(err);
-      alert('Failed to load second PDF.');
+      try {
+        const count = await docEngine.getPageCount(newBytes);
+        setSourceBytes(newBytes);
+        setSourcePageCount(count);
+        setMergeMode(true); // Launch merge UI
+      } catch (err) {
+        console.error(err);
+        alert('Failed to load second PDF.');
+      }
     }
-    
-    // Reset file input
+
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const handleOpenFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0 && onFilesSelected) {
+      onFilesSelected(e.target.files);
+    }
+    if (openFileInputRef.current) {
+      openFileInputRef.current.value = '';
     }
   };
 
   const handleApplyMerge = async (sequence: { docId: 'primary' | 'secondary'; pageIndex: number }[]) => {
     try {
       if (!sourceBytes) return;
-      const engine = new LumvalePDFEngine();
-      await engine.buildFromSequence(
+      const mergedBytes = await docEngine.buildFromSequence(
         sequence.map(s => ({
-          docBytes: s.docId === 'primary' ? documentBytes : sourceBytes,
+          documentBytes: (s.docId === 'primary' ? documentBytes : sourceBytes)!,
           pageIndex: s.pageIndex
         }))
       );
-      
-      const mergedBytes = await engine.exportBytes();
-      
+
       setDocumentBytes(mergedBytes);
       setPageCount(sequence.length);
       setMergeMode(false);
@@ -528,13 +554,10 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
     );
   }
 
-
   return (
-    <div className="flex flex-col h-screen w-full bg-vault-bg overflow-hidden text-vault-text relative z-0">
+    <div className="flex flex-col h-full w-full bg-[var(--color-lumvale-bg)] overflow-hidden text-[var(--color-lumvale-text)] relative z-0">
       {/* Static Background Orbs */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-[#F1C45E] rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[120px] opacity-[0.15] dark:opacity-[0.07] pointer-events-none z-0"></div>
-      <div className="absolute bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] bg-[#4FB89A] rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[120px] opacity-[0.15] dark:opacity-[0.07] pointer-events-none z-0"></div>
-
+      {/* Removed huge decorative blurred blobs here that messed up the workspace UI aesthetics */}
       {showMetadata && currentMetadata && (
         <MetadataModal 
           initialMetadata={currentMetadata}
@@ -550,9 +573,98 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
         />
       )}
 
+      {/* Hidden file input for open documents */}
+      <input 
+        type="file" 
+        multiple
+        accept=".pdf,.docx,.xlsx,.pptx,.md,image/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/markdown" 
+        ref={openFileInputRef} 
+        onChange={handleOpenFiles} 
+        className="hidden" 
+      />
+
+      <TopBar 
+        onOpen={() => openFileInputRef.current?.click()}
+        onExport={handleExport}
+        onMerge={handleMergeClick}
+        onExtract={() => setExtractMode(!extractMode)}
+        onSplit={() => setShowSplitModal(true)}
+        onCompress={handleCompress}
+        onWatermark={() => setShowWatermarkModal(true)}
+        onMetadata={handleOpenMetadata}
+        onEncrypt={() => setShowEncryption(true)}
+        onCheckUpdates={handleCheckUpdates}
+        isCompressing={isCompressing}
+        isEditMode={isEditMode}
+        onCloseDocument={onCloseDocument}
+        onSave={handleSave}
+        onSaveAs={handleSaveAs}
+        customFileMenuItems={customFileMenuItems}
+        customToolsMenuItems={customToolsMenuItems}
+        customTopBarRight={customTopBarRight}
+      />
+      
+      {customTabBar}
+
+      <Toolbar 
+        onOpen={() => openFileInputRef.current?.click()}
+        showSidebar={showSidebar}
+        onToggleSidebar={() => setShowSidebar(!showSidebar)}
+        onExport={handleExport}
+        onMerge={handleMergeClick}
+        onExtract={() => setExtractMode(!extractMode)}
+        extractMode={extractMode}
+        onSplit={() => setShowSplitModal(true)}
+        onCompress={handleCompress}
+        onWatermark={() => setShowWatermarkModal(true)}
+        onBates={() => setShowBatesModal(true)}
+        onHeadersFooters={() => setShowHeaderFooterModal(true)}
+        isCompressing={isCompressing}
+        onMetadata={handleOpenMetadata}
+        onEncrypt={() => setShowEncryption(true)}
+        zoom={zoom}
+        onZoomIn={() => setZoom(z => Math.min(z + 0.25, 4.0))}
+        onZoomOut={() => setZoom(z => Math.max(z - 0.25, 0.5))}
+        isEditMode={isEditMode}
+        onToggleEditMode={() => {
+          setIsEditMode(!isEditMode);
+          if (isEditMode) setAnnotateMode(false);
+        }}
+        annotateMode={annotateMode}
+        onToggleAnnotate={() => {
+          setAnnotateMode(!annotateMode);
+          if (!annotateMode) setIsEditMode(false);
+        }}
+        isOrganizeMode={viewMode === 'organizer'}
+        onOrganize={() => setViewMode(v => v === 'document' ? 'organizer' : 'document')}
+        customToolbarLeft={customToolbarLeft}
+        customToolbarCenter={customToolbarCenter}
+        customToolbarRight={customToolbarRight}
+      />
+
+      {annotateMode && (
+        <AnnotationToolbar 
+          activeTool={activeAnnotationTool}
+          onToolSelect={setActiveAnnotationTool}
+          activeColor={activeAnnotationColor}
+          onColorSelect={setActiveAnnotationColor}
+          strokeWidth={activeAnnotationStrokeWidth}
+          onStrokeWidthSelect={setActiveAnnotationStrokeWidth}
+          hasPendingAnnotations={annotations.length > 0}
+          onClearAnnotations={() => setAnnotations([])}
+          onClose={() => setAnnotateMode(false)}
+        />
+      )}
+
+      {isEditMode && (
+        <div className="bg-yellow-500/20 text-yellow-500 text-xs font-bold px-4 py-1.5 flex justify-center items-center border-b border-yellow-500/30 uppercase tracking-widest shadow-inner">
+          Edit Mode Active
+        </div>
+      )}
+
       {showSplitModal && (
         <SplitModal
-          documentBytes={documentBytes}
+          documentBytes={documentBytes!}
           pageCount={pageCount}
           onClose={() => setShowSplitModal(false)}
         />
@@ -581,190 +693,59 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
           onClose={() => setShowHeaderFooterModal(false)}
         />
       )}
-
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className="flex flex-col h-full w-full relative z-10"
-      >
-        <TopBar 
-          onExport={handleExport}
-          onMerge={handleMergeClick}
-          onExtract={() => setExtractMode(true)}
-          onSplit={() => setShowSplitModal(true)}
-          onCompress={handleCompress}
-          onWatermark={() => setShowWatermarkModal(true)}
-          isCompressing={isCompressing}
-          onMetadata={handleOpenMetadata}
-          onEncrypt={() => setShowEncryption(true)}
-          onCheckUpdates={handleCheckUpdates}
-          isEditMode={isEditMode}
-          onSave={handleSaveAndDownload}
-          onCloseDocument={onCloseDocument}
-        />
-        
-        <Toolbar 
-          showSidebar={showSidebar}
-          onToggleSidebar={() => setShowSidebar(!showSidebar)}
-          onExport={handleExport}
-          onMerge={handleMergeClick}
-          onExtract={() => setExtractMode(!extractMode)}
-          extractMode={extractMode}
-          onSplit={() => setShowSplitModal(true)}
-          onCompress={handleCompress}
-          onWatermark={() => setShowWatermarkModal(true)}
-          onBates={() => setShowBatesModal(true)}
-          onHeadersFooters={() => setShowHeaderFooterModal(true)}
-          isCompressing={isCompressing}
-          onMetadata={handleOpenMetadata}
-          onEncrypt={() => setShowEncryption(true)}
-          zoom={zoom}
-          onZoomIn={() => setZoom(z => Math.min(z + 0.25, 4.0))}
-          onZoomOut={() => setZoom(z => Math.max(z - 0.25, 0.5))}
-          isEditMode={isEditMode}
-          onToggleEditMode={() => {
-            setIsEditMode(!isEditMode);
-            if (isEditMode) setAnnotateMode(false);
-          }}
-          annotateMode={annotateMode}
-          onToggleAnnotate={() => {
-            setAnnotateMode(!annotateMode);
-            setIsEditMode(false);
-          }}
-          isOrganizeMode={viewMode === 'organizer'}
-          onOrganize={() => setViewMode(prev => prev === 'organizer' ? 'document' : 'organizer')}
-        />
-
-        {annotateMode && (
-          <AnnotationToolbar 
-            activeTool={activeAnnotationTool}
-            onToolSelect={setActiveAnnotationTool}
-            activeColor={activeAnnotationColor}
-            onColorSelect={setActiveAnnotationColor}
-            strokeWidth={activeAnnotationStrokeWidth}
-            onStrokeWidthSelect={setActiveAnnotationStrokeWidth}
-            hasPendingAnnotations={annotations.length > 0}
-            onClearAnnotations={() => setAnnotations([])}
-            onClose={() => setAnnotateMode(false)}
-          />
-        )}
-
-        <SaveModal 
-          isOpen={isSaveModalOpen} 
-          onClose={() => setSaveModalOpen(false)} 
-          onConfirm={async (asNative) => {
-            setSaveModalOpen(false);
-            if (annotations.length === 0) return;
-
-            try {
-              const engine = new LumvalePDFEngine();
-              await engine.loadDocument(documentBytes);
-              
-              // Group annotations by page
-              const annByPage = new Map<number, Annotation[]>();
-              for (const ann of annotations) {
-                if (!annByPage.has(ann.pageIndex)) annByPage.set(ann.pageIndex, []);
-                annByPage.get(ann.pageIndex)!.push(ann);
-              }
-              
-              // Apply to engine
-              for (const [pageIndex, pageAnns] of annByPage.entries()) {
-                const redactions = pageAnns.filter(a => a.type === 'redact');
-                const others = pageAnns.filter(a => a.type !== 'redact');
-                
-                // If there are redactions, we MUST rasterize the page first to securely destroy text
-                if (redactions.length > 0) {
-                  // ann.pageIndex is 0-based. rasterizePageWithRedactions needs 1-based.
-                  const imageBytes = await rasterizePageWithRedactions(documentBytes, pageIndex + 1, redactions);
-                  // VaultPDFEngine uses 0-based index
-                  await engine.replacePageWithImage(pageIndex, imageBytes, false);
-                }
-
-                // Apply remaining annotations (ink, text, highlight)
-                if (others.length > 0) {
-                  if (asNative) {
-                    engine.addNativeAnnotations(pageIndex - 1, others);
-                  } else {
-                    engine.addFlattenedAnnotations(pageIndex - 1, others);
-                  }
-                }
-              }
-              
-              const newBytes = await engine.exportBytes();
-              setDocumentBytes(newBytes);
-              setAnnotations([]); // Clear pending
-              downloadPdf(newBytes);
-            } catch (err) {
-              console.error(err);
-              alert('Failed to save annotations.');
-            }
-          }} 
-        />
-
-        {isEditMode && (
-          <div className="bg-yellow-500/20 text-yellow-500 text-xs font-bold px-4 py-1.5 flex justify-center items-center border-b border-yellow-500/30 uppercase tracking-widest shadow-inner">
-            Edit Mode Active
+      
+      <div className="flex-1 flex overflow-hidden bg-[var(--color-lumvale-bg)] relative z-10 min-h-0">
+        {!documentBytes ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-8">
+            <div 
+              aria-label="workspace-uploader"
+              className="border-2 border-dashed border-[var(--color-lumvale-border)] rounded-2xl p-12 text-center cursor-pointer hover:border-lumvale-primary/50 hover:bg-[var(--color-lumvale-border)] transition-all w-full max-w-xl"
+              onClick={() => openFileInputRef.current?.click()}
+            >
+              <div className="w-16 h-16 rounded-full bg-lumvale-primary/20 text-lumvale-primary mx-auto flex items-center justify-center mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+              </div>
+              <h2 className="text-2xl font-bold text-[var(--color-lumvale-text)] mb-2">Open a Document</h2>
+              <p className="text-[var(--color-lumvale-muted)]">Click here to browse for PDF, Word, Excel, PowerPoint, Markdown, or Image files.</p>
+            </div>
           </div>
-        )}
-
-        <input 
-          type="file" 
-          accept="application/pdf" 
-          ref={fileInputRef} 
-          onChange={handleFileChange} 
-          className="hidden" 
-        />
-
-        <div className="flex flex-1 min-h-0 overflow-hidden relative z-10">
-          {viewMode === 'organizer' ? (
-            <OrganizerGrid
-              documentBytes={documentBytes}
-              pageOrder={pageOrder}
-              onReorder={handleReorderPages}
-              onDelete={handleDeletePage}
-              onRotate={handleRotatePage}
-            />
-          ) : (
-            <>
-              {/* Left Sidebar - Thumbnails */}
+        ) : viewMode === 'organizer' ? (
+          <OrganizerGrid 
+            documentBytes={documentBytes!}
+            pageOrder={pageOrder}
+            onReorder={handleReorderPages}
+            onDelete={handleDeletePage}
+            onRotate={(index) => {
+                handleRotatePage(index);
+            }}
+          />
+        ) : (
+          <>
+            <div 
+              className={`bg-[var(--color-lumvale-surface)] border-r border-[var(--color-lumvale-border)] transition-all duration-300 ease-in-out flex flex-col z-20 ${
+                showSidebar ? 'w-64' : 'w-0'
+              }`}
+              style={{ width: showSidebar ? '256px' : '0px', overflow: 'hidden' }}
+            >
               {showSidebar && (
-                <div className="w-64 bg-vault-surface/70 backdrop-blur-md border-r border-vault-border flex flex-col relative z-10">
-                  <div className="p-4 border-b border-vault-border flex flex-col gap-3">
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold text-lg">Pages ({pageCount})</span>
-                      {extractMode && (
-                        <span className="text-sm font-normal text-green-500 bg-green-500/20 px-2 py-0.5 rounded">
-                          {selectedPages.size} Selected
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="flex bg-black/20 p-1 rounded-lg">
-                      <button 
-                        onClick={() => setActiveSidebarTab('thumbnails')}
-                        className={`flex-1 py-1.5 text-xs font-semibold rounded flex items-center justify-center gap-1.5 transition-colors ${activeSidebarTab === 'thumbnails' ? 'bg-vault-primary text-white shadow' : 'text-vault-muted hover:text-white'}`}
-                      >
-                        <LayoutGrid size={14} /> Thumbnails
-                      </button>
-                      <button 
-                        onClick={() => setActiveSidebarTab('bookmarks')}
-                        className={`flex-1 py-1.5 text-xs font-semibold rounded flex items-center justify-center gap-1.5 transition-colors ${activeSidebarTab === 'bookmarks' ? 'bg-vault-primary text-white shadow' : 'text-vault-muted hover:text-white'}`}
-                      >
-                        <Bookmark size={14} /> Bookmarks
-                      </button>
-                    </div>
+                <div className="flex-1 flex flex-col w-64 min-w-[256px] overflow-hidden">
+                  <div className="p-4 border-b border-[var(--color-lumvale-border)] flex justify-between items-center">
+                    <span className="font-bold text-lg text-[var(--color-lumvale-text)]">Pages ({pageCount})</span>
+                    {extractMode && (
+                      <span className="text-sm font-normal text-green-500 bg-green-500/20 px-2 py-0.5 rounded">
+                        {selectedPages.size} Selected
+                      </span>
+                    )}
                   </div>
-                  
                   {extractMode && activeSidebarTab === 'thumbnails' && (
-                    <div className="absolute top-28 left-0 right-0 bg-vault-surface shadow-md p-2 flex flex-col gap-2 z-20 border-b border-vault-border">
-                      <button 
+                    <div className="p-2 flex flex-col gap-2 border-b border-[var(--color-lumvale-border)]">
+                      <button
                         onClick={handleExtractConfirm}
                         className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-1.5 rounded text-sm transition-colors"
                       >
                         Download Selected
                       </button>
-                      <button 
+                      <button
                         onClick={() => { setExtractMode(false); setSelectedPages(new Set()); }}
                         className="w-full bg-transparent hover:bg-red-500/20 text-red-400 py-1.5 rounded text-sm transition-colors border border-red-500/30"
                       >
@@ -772,74 +753,109 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
                       </button>
                     </div>
                   )}
-
-                  <div ref={sidebarScrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 pt-4 custom-scrollbar" data-testid="sidebar-scroll-container">
+                  <div className="flex border-b border-[var(--color-lumvale-border)]">
+                    <button
+                      onClick={() => setActiveSidebarTab('thumbnails')}
+                      className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${
+                        activeSidebarTab === 'thumbnails' 
+                          ? 'border-lumvale-primary text-lumvale-primary' 
+                          : 'border-transparent text-[var(--color-lumvale-muted)] hover:text-[var(--color-lumvale-text)]'
+                      }`}
+                    >
+                      <LayoutGrid className="w-4 h-4 inline-block mr-2" />
+                      Thumbnails
+                    </button>
+                    <button
+                      onClick={() => setActiveSidebarTab('bookmarks')}
+                      className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${
+                        activeSidebarTab === 'bookmarks' 
+                          ? 'border-lumvale-primary text-lumvale-primary' 
+                          : 'border-transparent text-[var(--color-lumvale-muted)] hover:text-[var(--color-lumvale-text)]'
+                      }`}
+                    >
+                      <Bookmark className="w-4 h-4 inline-block mr-2" />
+                      Bookmarks
+                    </button>
+                  </div>
+                  <div
+                    ref={sidebarScrollRef}
+                    data-testid="sidebar-scroll-container"
+                    className="flex-1 overflow-y-auto custom-scrollbar p-4"
+                  >
                     {activeSidebarTab === 'thumbnails' ? (
-                      <Sidebar 
-                        documentBytes={documentBytes}
-                        pageOrder={pageOrder} 
+                      <Sidebar
+                        documentBytes={documentBytes!}
+                        pageOrder={pageOrder}
                         currentPage={currentPage}
-                        scrollContainerRef={sidebarScrollRef}
                         onSelectPage={(page) => {
-                          isProgrammaticScroll.current = true;
-                          setCurrentPage(page);
                           const el = document.getElementById(`pdf-page-${page}`);
-                          const container = document.getElementById('main-scroll-container');
-                          if (el && container) {
-                            container.scrollTo({ top: el.offsetTop - 32, behavior: 'smooth' });
-                            setTimeout(() => { isProgrammaticScroll.current = false; }, 800);
-                          } else {
-                            isProgrammaticScroll.current = false;
+                          if (el) {
+                            isProgrammaticScroll.current = true;
+                            
+                            if (scrollContainerRef.current) {
+                              const containerRect = scrollContainerRef.current.getBoundingClientRect();
+                              const elRect = el.getBoundingClientRect();
+                              const scrollTop = scrollContainerRef.current.scrollTop + (elRect.top - containerRect.top) - 32;
+                              scrollContainerRef.current.scrollTo({ top: scrollTop, behavior: 'smooth' });
+                            } else {
+                              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                            
+                            setCurrentPage(page);
+                            setTimeout(() => {
+                              isProgrammaticScroll.current = false;
+                            }, 1000);
                           }
-                        }} 
+                        }}
+                        scrollContainerRef={sidebarScrollRef}
+                        isEditMode={isEditMode}
                         extractMode={extractMode}
                         selectedPages={selectedPages}
                         onToggleSelect={handleToggleSelect}
                         onReorder={handleReorderPages}
                         onDelete={handleDeletePage}
                         onRotate={handleRotatePage}
-                        isEditMode={isEditMode}
                       />
                     ) : (
-                      <div className="-mx-2 -mt-2">
-                        <Bookmarks 
-                          documentBytes={documentBytes}
-                          currentPage={currentPage}
-                          onSelectPage={(page) => {
+                      <Bookmarks 
+                        documentBytes={documentBytes!}
+                        currentPage={currentPage}
+                        onSelectPage={(page) => {
+                          const el = document.getElementById(`pdf-page-${page}`);
+                          if (el) {
                             isProgrammaticScroll.current = true;
-                            setCurrentPage(page);
-                            const el = document.getElementById(`pdf-page-${page}`);
-                            const container = document.getElementById('main-scroll-container');
-                            if (el && container) {
-                              container.scrollTo({ top: el.offsetTop - 32, behavior: 'smooth' });
-                              setTimeout(() => { isProgrammaticScroll.current = false; }, 800);
+                            if (scrollContainerRef.current) {
+                              const containerRect = scrollContainerRef.current.getBoundingClientRect();
+                              const elRect = el.getBoundingClientRect();
+                              const scrollTop = scrollContainerRef.current.scrollTop + (elRect.top - containerRect.top) - 32;
+                              scrollContainerRef.current.scrollTo({ top: scrollTop, behavior: 'smooth' });
                             } else {
-                              isProgrammaticScroll.current = false;
+                              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                             }
-                          }}
-                        />
-                      </div>
+                            setCurrentPage(page);
+                            setTimeout(() => {
+                              isProgrammaticScroll.current = false;
+                            }, 1000);
+                          }
+                        }}
+                      />
                     )}
                   </div>
                 </div>
               )}
-
-              {/* Main Content - Canvas */}
-              <div 
+            </div>
+            
+            <div className="flex-1 flex flex-col min-w-0 min-h-0">
+              <div
                 ref={scrollContainerRef}
-                className="flex-1 min-h-0 overflow-auto bg-transparent relative z-10" 
                 id="main-scroll-container"
+                className="flex-1 min-h-0 overflow-y-auto w-full flex justify-center custom-scrollbar"
               >
-                <div className="min-h-full w-full flex flex-col items-center p-8 space-y-8">
+                <div 
+                  className="py-8 flex flex-col space-y-4"
+                  style={{ width: pageBaseSize.w * zoom }}
+                >
                   {pageOrder.map((pageNum, idx) => {
-                    // Virtualization: only mount the (heavy) PDFCanvas for pages
-                    // near the page the user is looking at. Off-window pages keep
-                    // their wrapper (so scroll height, the current-page observer,
-                    // and scroll-to-page all keep working) but render a cheap
-                    // placeholder sized to the real page. This keeps the mounted
-                    // canvas count to ~2*WINDOW+1 instead of the whole document,
-                    // which is what made applying edits (and dev-mode renders)
-                    // crawl on large files.
                     const shouldMount = Math.abs((idx + 1) - currentPage) <= MAIN_VIEWER_WINDOW;
                     return (
                       <div key={`main-page-${pageNum}`} id={`pdf-page-${idx + 1}`} className="flex justify-center pdf-page-wrapper">
@@ -868,10 +884,43 @@ export default function Workspace({ documentBytes: initialBytes, pageCount: init
                   })}
                 </div>
               </div>
-            </>
-          )}
-        </div>
-      </motion.div>
+            </div>
+            {rightSidebar && (
+              <div className="flex-none border-l border-[var(--color-lumvale-border)] bg-[var(--color-lumvale-surface)] h-full overflow-hidden">
+                {rightSidebar}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      <SaveModal 
+        isOpen={isSaveModalOpen} 
+        isSaveAs={saveAction === 'saveAs'}
+        hasAnnotations={annotations.length > 0}
+        originalFilename={documentName}
+        onClose={() => {
+          setSaveModalOpen(false);
+          setSaveAction(null);
+        }} 
+        onConfirm={async (asNative, filename) => {
+          setSaveModalOpen(false);
+          if (saveAction === 'save') {
+            await executeSave(asNative);
+          } else if (saveAction === 'saveAs') {
+            await executeSaveAs(asNative, filename);
+          }
+          setSaveAction(null);
+        }} 
+      />
+
+      <input 
+        type="file" 
+        accept="application/pdf" 
+        ref={fileInputRef} 
+        onChange={handleFileChange} 
+        className="hidden" 
+      />
     </div>
   );
 }

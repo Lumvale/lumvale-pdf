@@ -72,7 +72,7 @@ export default function MergeWorkspace({ primaryPageCount, secondaryPageCount, o
       <div className="p-4 bg-lumvale-surface border-b border-lumvale-border flex justify-between items-center shadow-md z-10">
         <h2 className="text-xl font-bold text-lumvale-accent">Dual-Pane Merge Workspace</h2>
         <div className="space-x-4">
-          <button onClick={onCancel} className="px-4 py-2 bg-lumvale-border hover:bg-red-500 hover:text-white rounded transition-colors">
+          <button onClick={onCancel} className="px-4 py-2 bg-lumvale-border hover:bg-red-500 hover:text-[var(--color-lumvale-text)] rounded transition-colors">
             Cancel
           </button>
           <button 
@@ -107,8 +107,8 @@ export default function MergeWorkspace({ primaryPageCount, secondaryPageCount, o
                           data-testid={page.id}
                           className="aspect-[1/1.4] bg-white rounded shadow-md border-2 border-lumvale-primary flex flex-col items-center justify-center relative select-none cursor-grab active:cursor-grabbing"
                         >
-                          <span className="text-gray-400 font-bold text-2xl">{page.pageIndex + 1}</span>
-                          <span className="text-[10px] text-gray-400 mt-2 absolute bottom-2">{page.docId}</span>
+                          <span className="text-[var(--color-lumvale-muted)] font-bold text-2xl">{page.pageIndex + 1}</span>
+                          <span className="text-[10px] text-[var(--color-lumvale-muted)] mt-2 absolute bottom-2">{page.docId}</span>
                         </div>
                       )}
                     </Draggable>
@@ -140,8 +140,8 @@ export default function MergeWorkspace({ primaryPageCount, secondaryPageCount, o
                           data-testid={page.id}
                           className="group aspect-[1/1.4] bg-gray-200 rounded shadow-md border-2 border-transparent hover:border-lumvale-accent flex flex-col items-center justify-center relative select-none cursor-grab active:cursor-grabbing opacity-80"
                         >
-                          <span className="text-gray-500 font-bold text-2xl">{page.pageIndex + 1}</span>
-                          <span className="text-[10px] text-gray-500 mt-2 absolute bottom-2">{page.docId}</span>
+                          <span className="text-[var(--color-lumvale-muted)] font-bold text-2xl">{page.pageIndex + 1}</span>
+                          <span className="text-[10px] text-[var(--color-lumvale-muted)] mt-2 absolute bottom-2">{page.docId}</span>
                           
                           {/* Accessibility/Quick Add Button */}
                           <button
@@ -153,7 +153,7 @@ export default function MergeWorkspace({ primaryPageCount, secondaryPageCount, o
                               setSecondaryPages(sourceClone);
                               setPrimaryPages(destClone);
                             }}
-                            className="absolute top-2 right-2 bg-lumvale-primary text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:scale-110"
+                            className="absolute top-2 right-2 bg-lumvale-primary text-[var(--color-lumvale-text)] rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:scale-110"
                             title="Add to Working Document"
                           >
                             +
