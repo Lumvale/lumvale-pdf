@@ -117,7 +117,7 @@ export default function Sidebar({
                         {isSelected && !extractMode && (
                           <div
                             data-testid="thumbnail-viewing-badge"
-                            className="absolute -top-2.5 left-2 z-20 flex items-center gap-1 bg-lumvale-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg select-none"
+                            className="absolute -top-2.5 left-2 z-20 flex items-center gap-1 bg-lumvale-primary text-[var(--color-lumvale-text)] text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg select-none"
                           >
                             <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse inline-block" />
                             Viewing
@@ -130,7 +130,7 @@ export default function Sidebar({
                               e.stopPropagation();
                               onDelete(index);
                             }}
-                            className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-md z-20 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-[var(--color-lumvale-text)] rounded-full w-6 h-6 flex items-center justify-center shadow-md z-20 opacity-0 group-hover:opacity-100 transition-opacity"
                             title="Delete Page"
                           >
                             <X size={14} />
@@ -142,14 +142,14 @@ export default function Sidebar({
                               e.stopPropagation();
                               onRotate(index);
                             }}
-                            className="absolute -bottom-2 -right-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-md z-20 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute -bottom-2 -right-2 bg-blue-500 hover:bg-blue-600 text-[var(--color-lumvale-text)] rounded-full w-6 h-6 flex items-center justify-center shadow-md z-20 opacity-0 group-hover:opacity-100 transition-opacity"
                             title="Rotate Page"
                           >
                             <RotateCw size={14} />
                           </button>
                         )}
                         {extractMode && isExtracted && (
-                          <div className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold shadow-md z-10">
+                          <div className="absolute -top-2 -right-2 bg-green-500 text-[var(--color-lumvale-text)] rounded-full w-6 h-6 flex items-center justify-center font-bold shadow-md z-10">
                             ✓
                           </div>
                         )}
@@ -164,7 +164,7 @@ export default function Sidebar({
                           />
                           <div className="absolute inset-0 border border-black/10 rounded"></div>
                         </div>
-                        <div className={`text-center text-xs mt-2 font-medium transition-colors ${isSelected ? 'text-white font-bold' : 'text-lumvale-muted'}`}>
+                        <div className={`text-center text-xs mt-2 font-medium transition-colors ${isSelected ? 'text-[var(--color-lumvale-text)] font-bold' : 'text-lumvale-muted'}`}>
                           Page {index + 1}
                         </div>
                       </motion.div>

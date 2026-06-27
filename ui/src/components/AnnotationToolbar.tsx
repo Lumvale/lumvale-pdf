@@ -12,6 +12,7 @@ interface AnnotationToolbarProps {
   onClearAnnotations: () => void;
   onClose: () => void;
   hasPendingAnnotations: boolean;
+  customEditTools?: React.ReactNode;
 }
 
 const COLORS = [
@@ -35,12 +36,13 @@ export default function AnnotationToolbar({
   onClearAnnotations,
   onClose,
   hasPendingAnnotations,
+  customEditTools,
 }: AnnotationToolbarProps) {
   return (
     <motion.div 
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      className="bg-vault-panel/80 backdrop-blur-md border-b border-white/10 p-2 flex items-center justify-between"
+      className="bg-vault-panel/80 backdrop-blur-md border-b border-[var(--color-lumvale-border)] p-2 flex items-center justify-between"
     >
       <div className="flex items-center space-x-4">
         {/* Tools */}
@@ -48,32 +50,33 @@ export default function AnnotationToolbar({
           
           <button 
             onClick={() => onToolSelect(activeTool === 'ink' ? null : 'ink')}
-            className={`p-2 rounded-md transition-colors flex items-center justify-center ${activeTool === 'ink' ? 'bg-vault-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            className={`p-2 rounded-md transition-colors flex items-center justify-center ${activeTool === 'ink' ? 'bg-[var(--color-lumvale-primary)] text-[var(--color-lumvale-text)]' : 'text-[var(--color-lumvale-muted)] hover:text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-border)]'}`}
             title="Pen Tool"
           >
             <PenTool size={18} />
           </button>
           <button 
             onClick={() => onToolSelect(activeTool === 'highlight' ? null : 'highlight')}
-            className={`p-2 rounded-md transition-colors flex items-center justify-center ${activeTool === 'highlight' ? 'bg-vault-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            className={`p-2 rounded-md transition-colors flex items-center justify-center ${activeTool === 'highlight' ? 'bg-[var(--color-lumvale-primary)] text-[var(--color-lumvale-text)]' : 'text-[var(--color-lumvale-muted)] hover:text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-border)]'}`}
             title="Highlighter"
           >
             <Highlighter size={18} />
           </button>
           <button 
             onClick={() => onToolSelect(activeTool === 'text' ? null : 'text')}
-            className={`p-2 rounded-md transition-colors flex items-center justify-center ${activeTool === 'text' ? 'bg-vault-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            className={`p-2 rounded-md transition-colors flex items-center justify-center ${activeTool === 'text' ? 'bg-[var(--color-lumvale-primary)] text-[var(--color-lumvale-text)]' : 'text-[var(--color-lumvale-muted)] hover:text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-border)]'}`}
             title="Text Tool"
           >
             <Type size={18} />
           </button>
           <button 
             onClick={() => onToolSelect(activeTool === 'redact' ? null : 'redact')}
-            className={`p-2 rounded-md transition-colors flex items-center justify-center ${activeTool === 'redact' ? 'bg-red-500 text-white' : 'text-gray-400 hover:text-white hover:bg-red-500/20'}`}
+            className={`p-2 rounded-md transition-colors flex items-center justify-center ${activeTool === 'redact' ? 'bg-red-500 text-[var(--color-lumvale-text)]' : 'text-[var(--color-lumvale-muted)] hover:text-[var(--color-lumvale-text)] hover:bg-red-500/20'}`}
             title="Redact Tool"
           >
             <Square size={18} fill={activeTool === 'redact' ? 'currentColor' : 'none'} />
           </button>
+          {customEditTools}
         </div>
 
         {/* Separator */}
@@ -97,7 +100,7 @@ export default function AnnotationToolbar({
 
         {/* Stroke width */}
         <div className="flex items-center space-x-2">
-          <span className="text-xs text-gray-400">Size</span>
+          <span className="text-xs text-[var(--color-lumvale-muted)]">Size</span>
           <input 
             type="range" 
             min="1" 
@@ -112,7 +115,7 @@ export default function AnnotationToolbar({
       <div className="flex items-center space-x-3">
         <button 
           onClick={onClearAnnotations}
-          className="text-xs flex items-center space-x-1 text-gray-400 hover:text-red-400 transition-colors px-2 py-1"
+          className="text-xs flex items-center space-x-1 text-[var(--color-lumvale-muted)] hover:text-red-400 transition-colors px-2 py-1"
           disabled={!hasPendingAnnotations}
           title="Clear pending annotations"
         >
@@ -122,7 +125,7 @@ export default function AnnotationToolbar({
 
         <button 
           onClick={onClose}
-          className="p-1.5 text-gray-400 hover:text-white rounded-md hover:bg-white/10 transition-colors"
+          className="p-1.5 text-[var(--color-lumvale-muted)] hover:text-[var(--color-lumvale-text)] rounded-md hover:bg-[var(--color-lumvale-border)] transition-colors"
           title="Close Annotation Mode"
         >
           <X size={18} />

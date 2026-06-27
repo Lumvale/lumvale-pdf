@@ -28,20 +28,20 @@ export default function UpdateToast() {
           className="fixed bottom-6 left-1/2 z-[100] flex items-center gap-4 bg-lumvale-panel border border-lumvale-primary shadow-xl rounded-lg px-4 py-3"
         >
           <div className="flex flex-col">
-            <span className="text-sm font-semibold text-white">Update Available</span>
-            <span className="text-xs text-gray-400">A new version of LumvalePDF is ready.</span>
+            <span className="text-sm font-semibold text-[var(--color-lumvale-text)]">Update Available</span>
+            <span className="text-xs text-[var(--color-lumvale-muted)]">A new version of LumvalePDF is ready.</span>
           </div>
           
           <button
             onClick={handleRefresh}
-            className="flex items-center gap-2 bg-lumvale-primary hover:bg-lumvale-primary/90 text-white text-sm px-3 py-1.5 rounded-md transition-colors"
+            className="flex items-center gap-2 bg-lumvale-primary hover:bg-lumvale-primary/90 text-[var(--color-lumvale-text)] text-sm px-3 py-1.5 rounded-md transition-colors"
           >
             <RefreshCw size={14} /> Refresh
           </button>
           
           <button 
             onClick={() => setUpdateAvailable(false)}
-            className="text-gray-400 hover:text-white p-1"
+            className="text-[var(--color-lumvale-muted)] hover:text-[var(--color-lumvale-text)] p-1"
           >
             <X size={14} />
           </button>
