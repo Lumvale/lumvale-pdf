@@ -31,12 +31,22 @@
     --theme-muted: #A3A095;
   }
 
+  /* Give the standalone app shell a bounded, viewport-sized height so the
+     workspace's h-full (height:100%) chain resolves and the page list scrolls
+     inside the viewer instead of growing the whole page. (Embedding hosts size
+     the workspace via their own container.) */
+  html,
+  #root {
+    height: 100%;
+  }
+
   body {
     background-color: var(--color-lumvale-bg);
     color: var(--color-lumvale-text);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     margin: 0;
     overflow-x: hidden;
+    height: 100%;
   }
 
   /* Custom Scrollbar for Webkit */
