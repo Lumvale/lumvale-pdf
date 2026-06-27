@@ -13,7 +13,7 @@
     "directory": "ui"
   },
   "private": false,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "sideEffects": [
     "**/*.css"
@@ -33,13 +33,14 @@
     "src/index.css"
   ],
   "scripts": {
-    "dev": "vite --force",
-    "dev:web": "set BUILD_TARGET=web&& vite --force",
+    "build:worker": "node scripts/build-worker.mjs",
+    "dev": "npm run build:worker && vite --force",
+    "dev:web": "set BUILD_TARGET=web&& npm run build:worker && vite --force",
     "start": "electron .",
-    "build": "tsc -b && vite build",
-    "build:lib": "tsup",
-    "prepack": "tsup",
-    "build:web": "set BUILD_TARGET=web&& tsc -b && vite build",
+    "build": "npm run build:worker && tsc -b && vite build",
+    "build:lib": "npm run build:worker && tsup",
+    "prepack": "npm run build:worker && tsup",
+    "build:web": "set BUILD_TARGET=web&& npm run build:worker && tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
