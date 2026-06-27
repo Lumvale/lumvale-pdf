@@ -12,16 +12,15 @@ import type {
 /**
  * Default DocumentEngine adapter — wraps @lumvale/pdf-core (LumvalePDFEngine).
  *
- * The bridge between the engine-agnostic port and the concrete OSS engine. Each
- * op follows the engine's load → operate → export lifecycle and returns new
- * bytes, leaving the input untouched. Option objects flow through from the
- * workspace modals already shaped for the engine; the port's option types are
+ * The bridge between the engine-agnostic port and the concrete engine. Each op
+ * follows the engine's load → operate → export lifecycle and returns new bytes,
+ * leaving the input untouched. Option objects flow through from the workspace
+ * modals already shaped for the engine; the port's option types are
  * intentionally loose (index signatures), so we cast at this boundary — that's
  * the adapter's job.
  *
- * In OSS pdf-ui the engine never varies, so this is the single engine the
- * workspace uses (see ./index). The shape matches the commercial workspace's
- * adapter so a host could still substitute its own DocumentEngine if needed.
+ * This is the default engine the workspace uses (see ./index). A host that wants
+ * different behavior can substitute its own DocumentEngine implementation.
  */
 export function createPdfCoreEngine(): DocumentEngine {
   return {

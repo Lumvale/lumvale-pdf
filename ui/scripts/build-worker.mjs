@@ -2,8 +2,8 @@
 // into a single self-contained string, written to src/engine/pdfWorker.inline.ts.
 //
 // Why: @lumvale/pdf-ui ships as a LIBRARY consumed by arbitrary bundlers
-// (Vite for our own desktop app, Next.js/webpack for Omnia). Vite's `?worker`
-// import does not survive into the published dist, so instead we inline the
+// (Vite for the desktop app, Next.js/webpack for embedding hosts). Vite's
+// `?worker` import does not survive into the published dist, so instead we inline the
 // worker as code and spin it up from a Blob URL at runtime (see workerEngine.ts)
 // — fully bundler-agnostic. Run automatically before each build (see package.json).
 import { build } from 'esbuild';
