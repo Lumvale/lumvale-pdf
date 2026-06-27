@@ -556,8 +556,9 @@ export default function Workspace({
 
   return (
     <div className="flex flex-col h-full w-full bg-[var(--color-lumvale-bg)] overflow-hidden text-[var(--color-lumvale-text)] relative z-0">
-      {/* Static Background Orbs */}
-      {/* Removed huge decorative blurred blobs here that messed up the workspace UI aesthetics */}
+      {/* Slow, theme-aware aurora backdrop (see fx.css). Sits behind all chrome;
+          shows through the canvas/empty-state areas which are left transparent. */}
+      <div className="workspace-aurora" aria-hidden="true" />
       {showMetadata && currentMetadata && (
         <MetadataModal 
           initialMetadata={currentMetadata}
@@ -694,7 +695,7 @@ export default function Workspace({
         />
       )}
       
-      <div className="flex-1 flex overflow-hidden bg-[var(--color-lumvale-bg)] relative z-10 min-h-0">
+      <div className="flex-1 flex overflow-hidden relative z-10 min-h-0">
         {!documentBytes ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8">
             <div 
