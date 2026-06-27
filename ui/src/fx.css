@@ -1,0 +1,78 @@
+/**
+ * Workspace background FX — a slow, theme-aware aurora.
+ *
+ * Vendored from @lumvale/storybook's fx layer (src/fx). OSS pdf-ui can't depend
+ * on the private storybook package, so the effect is carried here. It's driven
+ * by the --fx-glow-* tokens (which re-tint between light and dark), kept subtle
+ * so it never competes with document content, and fully disabled under
+ * `prefers-reduced-motion: reduce`.
+ */
+
+:root {
+  --fx-glow-primary: rgba(21, 86, 79, 0.24);
+  --fx-glow-primary-strong: rgba(21, 86, 79, 0.36);
+  --fx-glow-accent: rgba(192, 124, 24, 0.20);
+  --fx-glow-mint: rgba(127, 211, 198, 0.30);
+  --fx-speed-aurora: 26s;
+  --fx-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark,
+[data-theme="dark"] {
+  --fx-glow-primary: rgba(79, 184, 154, 0.24);
+  --fx-glow-primary-strong: rgba(79, 184, 154, 0.42);
+  --fx-glow-accent: rgba(241, 196, 94, 0.20);
+  --fx-glow-mint: rgba(127, 211, 198, 0.30);
+}
+
+@keyframes fx-aurora-a {
+  0%   { transform: translate3d(-8%, -6%, 0) rotate(0deg) scale(1.1); }
+  50%  { transform: translate3d(10%, 8%, 0) rotate(20deg) scale(1.25); }
+  100% { transform: translate3d(-8%, -6%, 0) rotate(0deg) scale(1.1); }
+}
+
+@keyframes fx-aurora-b {
+  0%   { transform: translate3d(6%, 10%, 0) rotate(0deg) scale(1.2); }
+  50%  { transform: translate3d(-12%, -8%, 0) rotate(-25deg) scale(1.05); }
+  100% { transform: translate3d(6%, 10%, 0) rotate(0deg) scale(1.2); }
+}
+
+/* Full-bleed backdrop layer — place as the first child of a `position: relative`
+   container, with the real UI stacked above it. */
+.workspace-aurora {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.workspace-aurora::before,
+.workspace-aurora::after {
+  content: "";
+  position: absolute;
+  inset: -15%;
+}
+
+.workspace-aurora::before {
+  background:
+    radial-gradient(40% 50% at 20% 25%, var(--fx-glow-primary-strong) 0%, transparent 70%),
+    radial-gradient(35% 45% at 80% 20%, var(--fx-glow-accent) 0%, transparent 70%);
+  filter: blur(52px);
+  animation: fx-aurora-a var(--fx-speed-aurora) var(--fx-ease) infinite;
+}
+
+.workspace-aurora::after {
+  background:
+    radial-gradient(45% 55% at 70% 80%, var(--fx-glow-mint) 0%, transparent 70%),
+    radial-gradient(30% 40% at 30% 75%, var(--fx-glow-primary) 0%, transparent 70%);
+  filter: blur(60px);
+  animation: fx-aurora-b calc(var(--fx-speed-aurora) * 1.25) var(--fx-ease) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-aurora::before,
+  .workspace-aurora::after {
+    animation: none;
+  }
+}

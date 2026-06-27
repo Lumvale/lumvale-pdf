@@ -13,7 +13,7 @@
     "directory": "ui"
   },
   "private": false,
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "sideEffects": [
     "**/*.css"
@@ -26,11 +26,13 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./styles.css": "./src/index.css"
+    "./styles.css": "./src/index.css",
+    "./fx.css": "./src/fx.css"
   },
   "files": [
     "dist",
-    "src/index.css"
+    "src/index.css",
+    "src/fx.css"
   ],
   "scripts": {
     "build:worker": "node scripts/build-worker.mjs",
