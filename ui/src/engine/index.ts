@@ -30,5 +30,6 @@ export type {
   BatesOptions,
   HeaderFooterOptions,
   EncryptOptions,
+  PdfPermissions,
   PageSource,
 } from './port';
