@@ -39,11 +39,11 @@
   }
 
   .dark, [data-theme="dark"] {
-    --theme-bg: #15110B;
-    --theme-text: #FBFAF6;
-    --theme-surface: #3A352B;
-    --theme-border: #6E6A5C;
-    --theme-muted: #A3A095;
+    --theme-bg: #0E1412;
+    --theme-text: #F2F6F4;
+    --theme-surface: #1A211E;
+    --theme-border: #2F3A36;
+    --theme-muted: #93A09A;
     --theme-primary: #4FB89A;
     --theme-primary-light: #7FD3C6;
     --theme-accent: #F1C45E;
