@@ -24,3 +24,18 @@ export const getPDFDocument = (documentBytes: Uint8Array): Promise<pdfjsLib.PDFD
   cachedPromise = pdfjsLib.getDocument({ data: dataCopy }).promise;
   return cachedPromise;
 };
+
+/**
+ * Loads a fresh, standalone document that is NOT shared with the viewer cache.
+ * Use this for batch work (e.g. image export) that calls page.cleanup() or
+ * destroys the document — doing that on the shared instance would corrupt the
+ * live viewer's pages. Call the returned `destroy()` when finished. Destruction
+ * goes through the loading task, which is where pdf.js exposes it.
+ */
+export const loadIsolatedPDFDocument = async (
+  documentBytes: Uint8Array,
+): Promise<{ pdf: pdfjsLib.PDFDocumentProxy; destroy: () => void }> => {
+  const task = pdfjsLib.getDocument({ data: documentBytes.slice() });
+  const pdf = await task.promise;
+  return { pdf, destroy: () => { void task.destroy(); } };
+};

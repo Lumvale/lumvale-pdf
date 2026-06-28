@@ -66,7 +66,7 @@ export default function OrganizerGrid({
                         <div className="absolute inset-0 bg-lumvale-bg/80 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center gap-3 backdrop-blur-sm">
                           <button
                             onClick={(e) => { e.stopPropagation(); onRotate(index); }}
-                            className="p-2 bg-lumvale-primary hover:bg-lumvale-primary/80 text-[var(--color-lumvale-text)] rounded-full shadow-lg transition-transform hover:scale-110"
+                            className="p-2 bg-lumvale-primary hover:bg-lumvale-primary/80 text-[var(--color-lumvale-bg)] rounded-full shadow-lg transition-transform hover:scale-110"
                             title="Rotate Page"
                           >
                             <RotateCw size={18} />

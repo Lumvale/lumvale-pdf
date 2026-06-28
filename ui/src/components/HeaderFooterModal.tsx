@@ -242,7 +242,7 @@ export default function HeaderFooterModal({ pageCount, onApply, onClose }: Heade
           <button 
             onClick={handleApply}
             disabled={isApplying}
-            className="px-4 py-2 rounded text-sm font-bold bg-lumvale-primary hover:bg-lumvale-primary/90 text-[var(--color-lumvale-text)] transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="px-4 py-2 rounded text-sm font-bold bg-lumvale-primary hover:bg-lumvale-primary/90 text-[var(--color-lumvale-bg)] transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {isApplying ? "Applying..." : "Apply"}
           </button>

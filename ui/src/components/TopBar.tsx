@@ -9,6 +9,8 @@ interface TopBarProps {
   onSplit: () => void;
   onCompress: () => void;
   onWatermark: () => void;
+  onBates?: () => void;
+  onHeadersFooters?: () => void;
   onMetadata: () => void;
   onEncrypt: () => void;
   onCheckUpdates: () => void;
@@ -41,10 +43,13 @@ export default function TopBar({
   onSplit,
   onCompress,
   onWatermark,
+  onBates,
+  onHeadersFooters,
   onMetadata,
   onEncrypt,
   onCheckUpdates,
   onOpen,
+  onAbout,
   isCompressing,
   isEditMode,
   compact = false,
@@ -172,6 +177,16 @@ export default function TopBar({
                   <button onClick={() => handleAction(onWatermark)} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
                     Add Watermark...
                   </button>
+                  {onBates && (
+                    <button onClick={() => handleAction(onBates)} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
+                      Page Numbering...
+                    </button>
+                  )}
+                  {onHeadersFooters && (
+                    <button onClick={() => handleAction(onHeadersFooters)} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
+                      Headers &amp; Footers...
+                    </button>
+                  )}
                   <div className="h-px bg-[var(--color-lumvale-border)] my-1"></div>
                   <button onClick={() => handleAction(onMetadata)} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
                     Edit Metadata...
@@ -202,7 +217,7 @@ export default function TopBar({
               <button onClick={() => handleAction(onCheckUpdates)} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
                 Check for Updates...
               </button>
-              <button onClick={() => handleAction(() => {})} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
+              <button onClick={() => handleAction(() => onAbout?.())} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
                 About Lumvale
               </button>
             </div>
