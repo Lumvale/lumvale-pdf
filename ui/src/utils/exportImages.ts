@@ -1,4 +1,4 @@
-import { getPDFDocument } from './pdfCache';
+import { loadIsolatedPDFDocument } from './pdfCache';
 import JSZip from 'jszip';
 
 export type ImageFormat = 'png' | 'jpeg';
@@ -40,7 +40,9 @@ export async function exportPagesToImages(
   const { format, scale, quality = 0.92, pageNumbers, baseName } = opts;
   if (pageNumbers.length === 0) throw new Error('No pages selected for export.');
 
-  const pdf = await getPDFDocument(documentBytes);
+  // Export runs on its OWN document instance, not the shared viewer cache, so the
+  // page.cleanup()/destroy() below can't corrupt pages the viewer is rendering.
+  const { pdf, destroy } = await loadIsolatedPDFDocument(documentBytes);
   const mime = format === 'png' ? 'image/png' : 'image/jpeg';
   const ext = format === 'png' ? 'png' : 'jpg';
 
@@ -72,25 +74,31 @@ export async function exportPagesToImages(
     return blob;
   };
 
-  const total = pageNumbers.length;
+  try {
+    const total = pageNumbers.length;
 
-  if (total === 1) {
-    const blob = await renderOne(pageNumbers[0]);
-    const filename = `${baseName}.${ext}`;
-    triggerDownload(blob, filename);
-    onProgress?.(1, 1);
+    if (total === 1) {
+      const blob = await renderOne(pageNumbers[0]);
+      const filename = `${baseName}.${ext}`;
+      triggerDownload(blob, filename);
+      onProgress?.(1, 1);
+      return filename;
+    }
+
+    const zip = new JSZip();
+    const padWidth = Math.max(2, String(total).length);
+    for (let i = 0; i < total; i++) {
+      const blob = await renderOne(pageNumbers[i]);
+      zip.file(`${baseName}-page-${String(i + 1).padStart(padWidth, '0')}.${ext}`, blob);
+      onProgress?.(i + 1, total);
+    }
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const filename = `${baseName}-images.zip`;
+    triggerDownload(zipBlob, filename);
     return filename;
+  } finally {
+    // All renders are awaited (sequential) before we get here, so destroying the
+    // isolated document frees its worker resources without aborting live work.
+    destroy();
   }
-
-  const zip = new JSZip();
-  const padWidth = Math.max(2, String(total).length);
-  for (let i = 0; i < total; i++) {
-    const blob = await renderOne(pageNumbers[i]);
-    zip.file(`${baseName}-page-${String(i + 1).padStart(padWidth, '0')}.${ext}`, blob);
-    onProgress?.(i + 1, total);
-  }
-  const zipBlob = await zip.generateAsync({ type: 'blob' });
-  const filename = `${baseName}-images.zip`;
-  triggerDownload(zipBlob, filename);
-  return filename;
 }
