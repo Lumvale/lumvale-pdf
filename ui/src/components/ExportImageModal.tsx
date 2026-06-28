@@ -47,11 +47,25 @@ export default function ExportImageModal({ pageCount, currentPage, onExport, onC
       alert("Invalid page selection. Use a format like '1, 3, 5-7'.");
       return;
     }
+    const scale = RESOLUTIONS[resIndex].scale;
+    // Every rendered image is held in memory until the zip is built, so cost
+    // grows with page count AND image area (∝ scale²). Warn before very large
+    // jobs that could be slow or memory-heavy on this device.
+    const cost = visualPages.length * scale * scale;
+    if (
+      cost > 900 &&
+      !window.confirm(
+        `Exporting ${visualPages.length} pages at this resolution renders them all in memory ` +
+          `before building the download, which may be slow or memory-intensive. Continue?`,
+      )
+    ) {
+      return;
+    }
     setIsExporting(true);
     setProgress({ done: 0, total: visualPages.length });
     try {
       await onExport(
-        { format, scale: RESOLUTIONS[resIndex].scale, visualPages },
+        { format, scale, visualPages },
         (done, total) => setProgress({ done, total }),
       );
       // onExport closes the modal on success.
