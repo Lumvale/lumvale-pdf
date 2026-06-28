@@ -167,8 +167,9 @@ export default function Workspace({
     const handleKey = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
       const target = e.target as HTMLElement | null;
-      // Don't hijack typing in form fields (e.g. modal inputs).
-      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      // Don't hijack typing in form fields or editable regions (e.g. modal
+      // inputs, annotation text boxes).
+      if (target && (/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.isContentEditable)) return;
       if (e.key === '+' || e.key === '=') {
         e.preventDefault();
         setZoom(z => Math.min(z + ZOOM_STEP, MAX_ZOOM));
@@ -365,9 +366,17 @@ export default function Workspace({
 
   const handleExport = () => setShowExportModal(true);
 
-  /** Strip a trailing extension so exported images inherit the document's name. */
-  const deriveBaseName = (name: string) =>
-    (name || 'document').replace(/\.[^./\\]+$/, '') || 'document';
+  /** Derive a safe file-name stem from the document name for exported images.
+   *  Drops any directory components and extension, then neutralises characters
+   *  that could produce odd paths inside the export zip. */
+  const deriveBaseName = (name: string) => {
+    const stem = (name || 'document')
+      .replace(/^.*[/\\]/, '')          // drop any directory path
+      .replace(/\.[^.]+$/, '')           // drop the trailing extension
+      .replace(/[^\w.\- ]+/g, '_')       // neutralise unusual characters
+      .replace(/^[.\s]+|[.\s]+$/g, '');  // trim leading/trailing dots & spaces
+    return stem || 'document';
+  };
 
   const handleExportImages = async (
     req: ExportImageRequest,
@@ -693,6 +702,7 @@ export default function Workspace({
         onMetadata={handleOpenMetadata}
         onEncrypt={() => setShowEncryption(true)}
         zoom={zoom}
+        baseZoom={BASE_ZOOM}
         onZoomIn={() => setZoom(z => Math.min(z + ZOOM_STEP, MAX_ZOOM))}
         onZoomOut={() => setZoom(z => Math.max(z - ZOOM_STEP, MIN_ZOOM))}
         onFitWidth={() => {

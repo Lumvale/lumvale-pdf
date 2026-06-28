@@ -17,6 +17,9 @@ interface ToolbarProps {
   onMetadata: () => void;
   onEncrypt: () => void;
   zoom: number;
+  /** Internal scale presented to the user as 100%. Keep in sync with the host's
+   *  zoom math (Workspace.BASE_ZOOM); defaults to 1.5 for standalone use. */
+  baseZoom?: number;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onZoomReset?: () => void;
@@ -53,6 +56,7 @@ export default function Toolbar({
   onMetadata,
   onEncrypt,
   zoom,
+  baseZoom = 1.5,
   onZoomIn,
   onZoomOut,
   onZoomReset,
@@ -202,7 +206,7 @@ export default function Toolbar({
         className="text-[var(--color-lumvale-muted)] hover:text-[var(--color-lumvale-text)] text-sm font-semibold w-12 text-center select-none rounded transition-colors"
         title="Reset zoom to 100%"
       >
-        {Math.round(zoom * 100 / 1.5)}%
+        {Math.round((zoom / baseZoom) * 100)}%
       </button>
 
       <button

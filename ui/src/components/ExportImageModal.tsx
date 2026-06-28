@@ -73,7 +73,11 @@ export default function ExportImageModal({ pageCount, currentPage, onExport, onC
             <ImageIcon className="w-5 h-5 text-lumvale-primary" />
             <h2 className="font-bold text-lg">Export to Image</h2>
           </div>
-          <button onClick={onClose} className="p-1 hover:bg-[var(--color-lumvale-border)] rounded-full transition-colors">
+          <button
+            onClick={onClose}
+            disabled={isExporting}
+            className="p-1 hover:bg-[var(--color-lumvale-border)] rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -155,7 +159,8 @@ export default function ExportImageModal({ pageCount, currentPage, onExport, onC
         <div className="p-4 border-t border-lumvale-border bg-lumvale-surface/50 flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded text-sm font-medium hover:bg-[var(--color-lumvale-border)] transition-colors"
+            disabled={isExporting}
+            className="px-4 py-2 rounded text-sm font-medium hover:bg-[var(--color-lumvale-border)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
