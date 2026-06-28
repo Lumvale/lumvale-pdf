@@ -2,6 +2,18 @@
 
 All notable changes to the Lumvale-PDF project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Document permission flags for encryption** (`@lumvale/pdf-core` 1.2.0, `@lumvale/pdf-ui` 0.3.0):
+  `exportEncryptedBytes` / the engine `encrypt` option now accept granular `permissions`
+  (printing, modifying, copying, annotating, filling forms, accessibility, document assembly),
+  letting callers restrict what recipients can do — not just set a password. Adds the
+  `PdfPermissions` type and `computePermissions()` helper. Permissions require a distinct owner
+  password (enforced with a clear error). Backward compatible: the default remains "all allowed".
+  Internally vendors a permission-aware fork of `@pdfsmaller/pdf-encrypt-lite` (MIT), since the
+  published package hardcodes the permission value. See `docs/proposals/encrypt-permissions.md`.
+
 ## [1.0.0] - Initial Open Source Release
 
 ### Added
