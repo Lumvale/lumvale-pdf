@@ -1,4 +1,4 @@
-import { PanelLeft, Files, Scissors, SplitSquareHorizontal, Minimize, Info, Lock, Download, ZoomIn, ZoomOut, Pencil, Eye, LayoutGrid, FileDigit, PanelTop, FolderOpen } from 'lucide-react';
+import { PanelLeft, Files, Scissors, SplitSquareHorizontal, Minimize, Info, Lock, ZoomIn, ZoomOut, Pencil, Eye, LayoutGrid, FileDigit, PanelTop, StretchHorizontal } from 'lucide-react';
 
 interface ToolbarProps {
   showSidebar: boolean;
@@ -17,8 +17,13 @@ interface ToolbarProps {
   onMetadata: () => void;
   onEncrypt: () => void;
   zoom: number;
+  /** Internal scale presented to the user as 100%. Keep in sync with the host's
+   *  zoom math (Workspace.BASE_ZOOM); defaults to 1.5 for standalone use. */
+  baseZoom?: number;
   onZoomIn: () => void;
   onZoomOut: () => void;
+  onZoomReset?: () => void;
+  onFitWidth?: () => void;
   isEditMode: boolean;
   onToggleEditMode: () => void;
   annotateMode: boolean;
@@ -51,8 +56,11 @@ export default function Toolbar({
   onMetadata,
   onEncrypt,
   zoom,
+  baseZoom = 1.5,
   onZoomIn,
   onZoomOut,
+  onZoomReset,
+  onFitWidth,
   isEditMode,
   onToggleEditMode,
   annotateMode,
@@ -98,6 +106,16 @@ export default function Toolbar({
         </>
       )}
 
+      {/* Annotate is available regardless of Edit Mode — comments are additive
+          and not committed until save. */}
+      <button
+        onClick={onToggleAnnotate}
+        className={`p-1.5 rounded transition-colors flex items-center gap-1.5 ${annotateMode ? 'bg-lumvale-accent/20 text-lumvale-accent border border-lumvale-accent/30' : 'text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)]'}`}
+        title="Annotate Document"
+      >
+        <Pencil size={18} />
+      </button>
+
       {isEditMode && (
         <>
           {!compact && (
@@ -136,14 +154,6 @@ export default function Toolbar({
               </button>
             </>
           )}
-
-          <button
-            onClick={onToggleAnnotate}
-            className={`p-1.5 rounded transition-colors flex items-center gap-1.5 ${annotateMode ? 'bg-lumvale-accent/20 text-lumvale-accent border border-lumvale-accent/30' : 'text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)]'}`}
-            title="Annotate Document"
-          >
-            <Pencil size={18} />
-          </button>
 
           {!compact && (
             <button
@@ -191,17 +201,31 @@ export default function Toolbar({
         <ZoomOut size={18} />
       </button>
       
-      <span className="text-[var(--color-lumvale-muted)] text-sm font-semibold w-12 text-center select-none">
-        {Math.round(zoom * 100 / 1.5)}%
-      </span>
+      <button
+        onClick={onZoomReset}
+        className="text-[var(--color-lumvale-muted)] hover:text-[var(--color-lumvale-text)] text-sm font-semibold w-12 text-center select-none rounded transition-colors"
+        title="Reset zoom to 100%"
+      >
+        {Math.round((zoom / baseZoom) * 100)}%
+      </button>
 
-      <button 
+      <button
         onClick={onZoomIn}
         className="p-1.5 rounded transition-colors text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)]"
         title="Zoom In"
       >
         <ZoomIn size={18} />
       </button>
+
+      {onFitWidth && (
+        <button
+          onClick={onFitWidth}
+          className="p-1.5 rounded transition-colors text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)]"
+          title="Fit Width"
+        >
+          <StretchHorizontal size={18} />
+        </button>
+      )}
 
       {customToolbarRight}
 

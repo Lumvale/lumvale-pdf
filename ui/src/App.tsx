@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Wand2, Zap, Shield, Moon, Sun } from 'lucide-react';
+import { FileText, Zap, Shield, Moon, Sun } from 'lucide-react';
 import PDFUploader from './components/PDFUploader';
 import Workspace from './components/Workspace';
 import RecentFiles from './components/RecentFiles';
 import { addRecentFile } from './utils/recentFiles';
+import { processFiles } from './utils/fileProcessor';
 import { toggleTheme, isDarkMode } from './utils/theme';
 import './index.css';
 
@@ -37,8 +38,31 @@ function App() {
     }
   };
 
+  // Opening a document from inside the workspace (File → Open Document, the
+  // empty-state uploader, or drag-and-drop) routes here. Multiple files are
+  // merged into one, mirroring the landing-page uploader.
+  const handleOpenFiles = async (files: FileList | File[]) => {
+    try {
+      const [result] = await processFiles(files, true);
+      if (result) {
+        await handlePdfLoaded(result.name, result.bytes, result.pageCount);
+      }
+    } catch (err) {
+      console.error('Failed to open document', err);
+      alert('Failed to open the selected file. Please ensure it is a supported format.');
+    }
+  };
+
   if (pdfData) {
-    return <Workspace documentBytes={pdfData.bytes} pageCount={pdfData.pageCount} onCloseDocument={() => setPdfData(null)} />;
+    return (
+      <Workspace
+        documentName={pdfData.name}
+        documentBytes={pdfData.bytes}
+        pageCount={pdfData.pageCount}
+        onFilesSelected={handleOpenFiles}
+        onCloseDocument={() => setPdfData(null)}
+      />
+    );
   }
   return (
     <div className="min-h-screen bg-lumvale-bg text-lumvale-text relative overflow-x-hidden flex flex-col items-center pt-12 pb-8 px-4">

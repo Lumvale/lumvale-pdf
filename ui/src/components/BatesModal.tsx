@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Hash, Loader2 } from 'lucide-react';
+import { parsePageRanges } from '../utils/pageRanges';
 
 interface BatesModalProps {
   pageCount: number;
@@ -34,33 +35,17 @@ export default function BatesModal({ pageCount, onApply, onClose }: BatesModalPr
   const [progressMsg, setProgressMsg] = useState("Applying...");
 
   const handleApply = async () => {
+    // `pageIndices` stays undefined for "all" so the engine stamps every page
+    // without us enumerating them. Otherwise resolve to 0-based indices.
     let pageIndices: number[] | undefined = undefined;
-    
+
     if (targetPages.trim().toLowerCase() !== 'all') {
-      const indices = new Set<number>();
-      const parts = targetPages.split(',');
-      for (let part of parts) {
-        part = part.trim();
-        if (part.includes('-')) {
-          const [start, end] = part.split('-').map(n => parseInt(n, 10));
-          if (!isNaN(start) && !isNaN(end)) {
-            for (let i = start; i <= end; i++) {
-              if (i >= 1 && i <= pageCount) indices.add(i - 1);
-            }
-          }
-        } else {
-          const num = parseInt(part, 10);
-          if (!isNaN(num) && num >= 1 && num <= pageCount) {
-            indices.add(num - 1);
-          }
-        }
-      }
-      
-      if (indices.size === 0) {
+      const pages = parsePageRanges(targetPages, pageCount);
+      if (!pages) {
         alert("Invalid page selection. Please specify pages like '1, 3, 5-7' or 'all'.");
         return;
       }
-      pageIndices = Array.from(indices);
+      pageIndices = pages.map(p => p - 1);
     }
     
     setIsApplying(true);
@@ -245,7 +230,7 @@ export default function BatesModal({ pageCount, onApply, onClose }: BatesModalPr
           <button 
             onClick={handleApply}
             disabled={isApplying}
-            className="px-4 py-2 rounded text-sm font-bold bg-lumvale-primary hover:bg-lumvale-primary/90 text-[var(--color-lumvale-text)] transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="px-4 py-2 rounded text-sm font-bold bg-lumvale-primary hover:bg-lumvale-primary/90 text-[var(--color-lumvale-bg)] transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {isApplying ? (
               <>

@@ -34,7 +34,7 @@ export default function UpdateToast() {
           
           <button
             onClick={handleRefresh}
-            className="flex items-center gap-2 bg-lumvale-primary hover:bg-lumvale-primary/90 text-[var(--color-lumvale-text)] text-sm px-3 py-1.5 rounded-md transition-colors"
+            className="flex items-center gap-2 bg-lumvale-primary hover:bg-lumvale-primary/90 text-[var(--color-lumvale-bg)] text-sm px-3 py-1.5 rounded-md transition-colors"
           >
             <RefreshCw size={14} /> Refresh
           </button>

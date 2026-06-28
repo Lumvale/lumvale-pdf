@@ -98,7 +98,7 @@ export default function MetadataModal({ initialMetadata, onSave, onClose }: Meta
             </button>
             <button 
               onClick={() => onSave(formData)}
-              className="px-6 py-2 text-sm bg-lumvale-primary text-[var(--color-lumvale-text)] rounded font-bold hover:opacity-90 transition-opacity"
+              className="px-6 py-2 text-sm bg-lumvale-primary text-[var(--color-lumvale-bg)] rounded font-bold hover:opacity-90 transition-opacity"
             >
               Save Changes
             </button>

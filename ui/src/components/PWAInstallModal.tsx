@@ -69,7 +69,7 @@ export default function PWAInstallModal({ isOpen, onClose, onInstall, isIOSManua
               ) : (
                 <button
                   onClick={onInstall}
-                  className="w-full bg-lumvale-primary hover:bg-lumvale-primary/90 text-[var(--color-lumvale-text)] font-medium py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all"
+                  className="w-full bg-lumvale-primary hover:bg-lumvale-primary/90 text-[var(--color-lumvale-bg)] font-medium py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all"
                 >
                   Install App
                 </button>

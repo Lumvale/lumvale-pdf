@@ -1,4 +1,3 @@
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { getPDFDocument } from './pdfCache';
 import type { Annotation } from '../components/AnnotationOverlay';
 
@@ -28,12 +27,13 @@ export async function rasterizePageWithRedactions(
   canvas.width = viewport.width;
   canvas.height = viewport.height;
   
-  const renderContext: any = {
+  const renderParams: Parameters<typeof page.render>[0] = {
+    canvas,
     canvasContext: ctx,
-    viewport: viewport
+    viewport,
   };
-  
-  await page.render(renderContext).promise;
+
+  await page.render(renderParams).promise;
   
   // Draw the redaction boxes on top of the rendered image
   for (const ann of annotations) {
