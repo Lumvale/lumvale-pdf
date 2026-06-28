@@ -25,6 +25,10 @@ interface ToolbarProps {
   onToggleAnnotate: () => void;
   isOrganizeMode: boolean;
   onOrganize: () => void;
+  /** Small-screen "limited edit": hide the heavy/multi-step tools (merge,
+   *  compress, Bates, headers/footers, organizer, split, extract, metadata,
+   *  encrypt). View + annotate + page delete/rotate remain. */
+  compact?: boolean;
   customToolbarLeft?: React.ReactNode;
   customToolbarCenter?: React.ReactNode;
   customToolbarRight?: React.ReactNode;
@@ -55,6 +59,7 @@ export default function Toolbar({
   onToggleAnnotate,
   isOrganizeMode,
   onOrganize,
+  compact = false,
   customToolbarLeft,
   customToolbarCenter,
   customToolbarRight
@@ -73,58 +78,66 @@ export default function Toolbar({
 
       <div className="w-px h-6 bg-[var(--color-lumvale-border)] mx-1"></div>
 
-      <button 
-        onClick={onExtract}
-        className={`p-1.5 rounded transition-colors flex items-center gap-1.5 ${extractMode ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)]'}`}
-        title="Extract Pages"
-      >
-        <Scissors size={18} />
-      </button>
+      {!compact && (
+        <>
+          <button
+            onClick={onExtract}
+            className={`p-1.5 rounded transition-colors flex items-center gap-1.5 ${extractMode ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)]'}`}
+            title="Extract Pages"
+          >
+            <Scissors size={18} />
+          </button>
 
-      <button 
-        onClick={onSplit}
-        className="p-1.5 rounded transition-colors text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)] flex items-center gap-1.5"
-        title="Split Document"
-      >
-        <SplitSquareHorizontal size={18} />
-      </button>
+          <button
+            onClick={onSplit}
+            className="p-1.5 rounded transition-colors text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)] flex items-center gap-1.5"
+            title="Split Document"
+          >
+            <SplitSquareHorizontal size={18} />
+          </button>
+        </>
+      )}
 
       {isEditMode && (
         <>
-          <button 
-            onClick={onMerge}
-            className="p-1.5 rounded transition-colors text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)] flex items-center gap-1.5"
-            title="Merge Document"
-          >
-            <Files size={18} />
-          </button>
+          {!compact && (
+            <>
+              <button
+                onClick={onMerge}
+                className="p-1.5 rounded transition-colors text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)] flex items-center gap-1.5"
+                title="Merge Document"
+              >
+                <Files size={18} />
+              </button>
 
-          <button 
-            onClick={onCompress}
-            disabled={isCompressing}
-            className={`p-1.5 rounded transition-colors flex items-center gap-1.5 ${isCompressing ? 'opacity-50 cursor-not-allowed text-[var(--color-lumvale-muted)]' : 'text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)]'}`}
-            title="Compress / Optimize"
-          >
-            <Minimize size={18} />
-          </button>
+              <button
+                onClick={onCompress}
+                disabled={isCompressing}
+                className={`p-1.5 rounded transition-colors flex items-center gap-1.5 ${isCompressing ? 'opacity-50 cursor-not-allowed text-[var(--color-lumvale-muted)]' : 'text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)]'}`}
+                title="Compress / Optimize"
+              >
+                <Minimize size={18} />
+              </button>
 
-          <button 
-            onClick={onBates}
-            className="p-1.5 rounded transition-colors text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)] flex items-center gap-1.5"
-            title="Page Numbering"
-          >
-            <FileDigit size={18} />
-          </button>
+              <button
+                onClick={onBates}
+                className="p-1.5 rounded transition-colors text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)] flex items-center gap-1.5"
+                title="Page Numbering"
+              >
+                <FileDigit size={18} />
+              </button>
 
-          <button 
-            onClick={onHeadersFooters}
-            className="p-1.5 rounded transition-colors text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)] flex items-center gap-1.5"
-            title="Headers & Footers"
-          >
-            <PanelTop size={18} />
-          </button>
+              <button
+                onClick={onHeadersFooters}
+                className="p-1.5 rounded transition-colors text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)] flex items-center gap-1.5"
+                title="Headers & Footers"
+              >
+                <PanelTop size={18} />
+              </button>
+            </>
+          )}
 
-          <button 
+          <button
             onClick={onToggleAnnotate}
             className={`p-1.5 rounded transition-colors flex items-center gap-1.5 ${annotateMode ? 'bg-lumvale-accent/20 text-lumvale-accent border border-lumvale-accent/30' : 'text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)]'}`}
             title="Annotate Document"
@@ -132,33 +145,39 @@ export default function Toolbar({
             <Pencil size={18} />
           </button>
 
-          <button 
-            onClick={onOrganize}
-            className={`p-1.5 rounded transition-colors flex items-center gap-1.5 ${isOrganizeMode ? 'bg-lumvale-primary text-[var(--color-lumvale-bg)] border border-lumvale-primary' : 'text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)]'}`}
-            title="Visual Page Organizer"
-          >
-            <LayoutGrid size={18} />
-          </button>
+          {!compact && (
+            <button
+              onClick={onOrganize}
+              className={`p-1.5 rounded transition-colors flex items-center gap-1.5 ${isOrganizeMode ? 'bg-lumvale-primary text-[var(--color-lumvale-bg)] border border-lumvale-primary' : 'text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)]'}`}
+              title="Visual Page Organizer"
+            >
+              <LayoutGrid size={18} />
+            </button>
+          )}
 
           {customToolbarCenter}
 
-          <div className="w-px h-6 bg-[var(--color-lumvale-border)] mx-1"></div>
+          {!compact && (
+            <>
+              <div className="w-px h-6 bg-[var(--color-lumvale-border)] mx-1"></div>
 
-          <button 
-            onClick={onMetadata}
-            className="p-1.5 rounded transition-colors text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)] flex items-center gap-1.5"
-            title="Edit Metadata"
-          >
-            <Info size={18} />
-          </button>
+              <button
+                onClick={onMetadata}
+                className="p-1.5 rounded transition-colors text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)] flex items-center gap-1.5"
+                title="Edit Metadata"
+              >
+                <Info size={18} />
+              </button>
 
-          <button 
-            onClick={onEncrypt}
-            className="p-1.5 rounded transition-colors text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)] flex items-center gap-1.5"
-            title="Encrypt / Lock"
-          >
-            <Lock size={18} />
-          </button>
+              <button
+                onClick={onEncrypt}
+                className="p-1.5 rounded transition-colors text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)] flex items-center gap-1.5"
+                title="Encrypt / Lock"
+              >
+                <Lock size={18} />
+              </button>
+            </>
+          )}
 
           <div className="w-px h-6 bg-[var(--color-lumvale-border)] mx-1"></div>
         </>
