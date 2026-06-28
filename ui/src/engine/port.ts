@@ -47,9 +47,26 @@ export interface HeaderFooterOptions {
   [key: string]: unknown;
 }
 
+/**
+ * Granular document permissions. Each flag defaults to allowed; set one to
+ * `false` to deny it. Only enforced when a distinct owner password is set.
+ * Structurally matches `PdfPermissions` in @lumvale/pdf-core.
+ */
+export interface PdfPermissions {
+  printing?: boolean;
+  modifying?: boolean;
+  copying?: boolean;
+  annotating?: boolean;
+  fillingForms?: boolean;
+  contentAccessibility?: boolean;
+  documentAssembly?: boolean;
+}
+
 export interface EncryptOptions {
   userPassword?: string;
   ownerPassword?: string;
+  /** Restrict what recipients can do. Requires a distinct owner password. */
+  permissions?: PdfPermissions;
 }
 
 /** A page taken from a specific source document, used when composing/merging. */

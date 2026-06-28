@@ -106,6 +106,7 @@ export function createWorkerPdfEngine(): DocumentEngine {
         documentBytes,
         userPassword: options.userPassword,
         ownerPassword: options.ownerPassword,
+        permissions: options.permissions,
       }),
   };
 }
