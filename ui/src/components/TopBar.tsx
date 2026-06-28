@@ -16,6 +16,8 @@ interface TopBarProps {
   onAbout?: () => void;
   isCompressing: boolean;
   isEditMode: boolean;
+  /** Small-screen "limited edit": hide the Tools menu (heavy editing ops). */
+  compact?: boolean;
   onShowInstall?: () => void;
   onCloseDocument?: () => void;
   onSave?: () => void;
@@ -45,6 +47,7 @@ export default function TopBar({
   onOpen,
   isCompressing,
   isEditMode,
+  compact = false,
   onShowInstall,
   onCloseDocument,
   onSave,
@@ -140,14 +143,14 @@ export default function TopBar({
           )}
         </div>
 
-        <div className="relative h-full flex items-center">
-          <button 
+        <div className={`relative h-full flex items-center ${compact ? 'hidden' : ''}`}>
+          <button
             className={`px-3 h-full flex items-center transition-colors ${activeMenu === 'tools' ? 'bg-[var(--color-lumvale-border)] text-[var(--color-lumvale-text)]' : 'text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)]'}`}
             onClick={() => toggleMenu('tools')}
           >
             Tools
           </button>
-          {activeMenu === 'tools' && (
+          {!compact && activeMenu === 'tools' && (
             <div className="absolute top-full left-0 mt-0 w-48 bg-[var(--color-lumvale-surface)] border border-[var(--color-lumvale-border)] shadow-2xl rounded-b-md py-1">
               {/* Page-level operations — available regardless of edit mode. */}
               <button onClick={() => handleAction(onExtract)} className="w-full text-left px-4 py-1.5 text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-primary)] hover:text-[var(--color-lumvale-bg)]">
