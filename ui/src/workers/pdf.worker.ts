@@ -39,7 +39,7 @@ self.addEventListener('message', async (e) => {
       self.postMessage({ id, progress: 'Loading document...' });
       await engine.loadDocument(payload.documentBytes);
       self.postMessage({ id, progress: 'Encrypting and saving document...' });
-      resultBytes = await engine.exportEncryptedBytes(payload.userPassword, payload.ownerPassword);
+      resultBytes = await engine.exportEncryptedBytes(payload.userPassword, payload.ownerPassword, payload.permissions);
     } else {
       throw new Error(`Unknown action: ${action}`);
     }

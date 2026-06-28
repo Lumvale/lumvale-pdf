@@ -1,5 +1,55 @@
 import { PDFDocument, degrees, rgb, PDFName, PDFDict, PDFArray, PDFNumber, PDFString, PDFHexString, StandardFonts } from 'pdf-lib';
-import { encryptPDF } from '@pdfsmaller/pdf-encrypt-lite';
+// Vendored, permission-aware fork of @pdfsmaller/pdf-encrypt-lite (MIT). The
+// published package hardcodes the permission integer; see vendor/pdf-encrypt.
+import { encryptPDF } from './vendor/pdf-encrypt/pdf-encrypt.js';
+
+/**
+ * Granular document permissions for {@link LumvalePDFEngine.exportEncryptedBytes}.
+ * Each flag defaults to allowed (true); set one to `false` to deny it.
+ *
+ * Permissions are only enforced by conformant readers when a distinct owner
+ * password is set — see {@link computePermissions} and `exportEncryptedBytes`.
+ */
+export interface PdfPermissions {
+  /** Allow printing (and, implicitly, high-resolution printing). */
+  printing?: boolean;
+  /** Allow modifying the document's contents. */
+  modifying?: boolean;
+  /** Allow copying / extracting text and graphics. */
+  copying?: boolean;
+  /** Allow adding or modifying annotations and form fields. */
+  annotating?: boolean;
+  /** Allow filling in existing form fields. */
+  fillingForms?: boolean;
+  /** Allow extracting text/graphics for accessibility. */
+  contentAccessibility?: boolean;
+  /** Allow assembling the document (insert/delete/rotate pages). */
+  documentAssembly?: boolean;
+}
+
+/**
+ * Compute the signed 32-bit `/P` permission value (PDF 32000-1, Table 22,
+ * security handler revision ≥3) from a {@link PdfPermissions} object. Starts from
+ * 0xFFFFFFFC ("all allowed", reserved bits 1–2 cleared) and clears the bit for
+ * each denied capability. `computePermissions({})` returns -4 (unchanged default).
+ */
+export function computePermissions(p: PdfPermissions = {}): number {
+  let bits = 0xFFFFFFFC;
+  const deny = (mask: number) => { bits &= ~mask; };
+  if (p.printing === false)             deny(0x4 | 0x800); // bit 3 (print) + bit 12 (high-res)
+  if (p.modifying === false)            deny(0x8);         // bit 4
+  if (p.copying === false)              deny(0x10);        // bit 5
+  if (p.annotating === false)           deny(0x20);        // bit 6
+  if (p.fillingForms === false)         deny(0x100);       // bit 9
+  if (p.contentAccessibility === false) deny(0x200);       // bit 10
+  if (p.documentAssembly === false)     deny(0x400);       // bit 11
+  return bits | 0; // force signed 32-bit
+}
+
+/** True when every permission flag is allowed (or unset). */
+function allPermissionsAllowed(p?: PdfPermissions): boolean {
+  return computePermissions(p) === (0xFFFFFFFC | 0);
+}
 
 // Document-conversion port + registry. The contract lives in core; the
 // environment-specific adapters live in platform packages and are registered by
@@ -596,22 +646,39 @@ export class LumvalePDFEngine {
   }
 
   /**
-   * Export the current document as an RC4 encrypted byte array
+   * Export the current document as an RC4 (128-bit) encrypted byte array.
+   *
+   * @param userPassword  Password to open the document (omit for no open password).
+   * @param ownerPassword Owner password. Required — and must differ from the user
+   *                      password — whenever `permissions` restricts anything, since
+   *                      readers only enforce `/P` for the user (not the owner).
+   * @param permissions   Optional granular permissions. Defaults to all allowed.
    */
-  public async exportEncryptedBytes(userPassword?: string, ownerPassword?: string): Promise<Uint8Array> {
+  public async exportEncryptedBytes(
+    userPassword?: string,
+    ownerPassword?: string,
+    permissions?: PdfPermissions,
+  ): Promise<Uint8Array> {
     if (!this.pdfDoc) throw new Error("No document loaded");
-    
-    // First, save the unencrypted bytes with object streams disabled.
-    // pdf-encrypt-lite requires object streams to be off to encrypt properly.
+
+    // Restricting permissions is only meaningful with a distinct owner password.
+    if (!allPermissionsAllowed(permissions)) {
+      if (!ownerPassword || ownerPassword === (userPassword || '')) {
+        throw new Error("Restricting permissions requires a distinct owner password");
+      }
+    }
+
+    // Save the unencrypted bytes with object streams disabled — the encrypt
+    // routine requires object streams to be off to encrypt properly.
     const unencryptedBytes = await this.pdfDoc.save({ useObjectStreams: false, objectsPerTick: Infinity });
-    
-    // Encrypt the bytes
+
     const encryptedBytes = await encryptPDF(
-      unencryptedBytes, 
-      userPassword || '', 
-      ownerPassword || undefined
+      unencryptedBytes,
+      userPassword || '',
+      ownerPassword || undefined,
+      computePermissions(permissions),
     );
-    
+
     return encryptedBytes;
   }
 }

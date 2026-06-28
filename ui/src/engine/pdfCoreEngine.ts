@@ -74,7 +74,7 @@ export function createPdfCoreEngine(): DocumentEngine {
     async encrypt(documentBytes, options: EncryptOptions) {
       const engine = new LumvalePDFEngine();
       await engine.loadDocument(documentBytes);
-      return engine.exportEncryptedBytes(options.userPassword, options.ownerPassword);
+      return engine.exportEncryptedBytes(options.userPassword, options.ownerPassword, options.permissions);
     },
 
     async rotatePage(documentBytes, pageIndex, degrees) {
