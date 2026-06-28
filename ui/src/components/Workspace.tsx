@@ -21,6 +21,7 @@ import SaveModal from './SaveModal';
 import AnnotationToolbar from './AnnotationToolbar';
 import type { Annotation, AnnotationType } from './AnnotationOverlay';
 import { useDocumentEngine } from '../engine';
+import { useIsSmallScreen } from '../hooks/useIsSmallScreen';
 
 const MAIN_VIEWER_WINDOW = 6;
 
@@ -82,7 +83,14 @@ export default function Workspace({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageOrder, setPageOrder] = useState<number[]>([]);
   const [showSidebar, setShowSidebar] = useState(true);
+  const isSmallScreen = useIsSmallScreen();
   const [activeSidebarTab, setActiveSidebarTab] = useState<'thumbnails' | 'bookmarks'>('thumbnails');
+
+  // On small screens the thumbnail panel is a slide-over drawer — keep it closed
+  // by default (open on desktop). Re-applies when crossing the breakpoint.
+  useEffect(() => {
+    setShowSidebar(!isSmallScreen);
+  }, [isSmallScreen]);
   const [viewMode, setViewMode] = useState<'document' | 'organizer'>('document');
   const [zoom, setZoom] = useState(1.5);
   /** Intrinsic page size in PDF points, learned from the first rendered page.
@@ -584,7 +592,8 @@ export default function Workspace({
         className="hidden" 
       />
 
-      <TopBar 
+      <TopBar
+        compact={isSmallScreen}
         onOpen={() => openFileInputRef.current?.click()}
         onExport={handleExport}
         onMerge={handleMergeClick}
@@ -607,7 +616,8 @@ export default function Workspace({
       
       {customTabBar}
 
-      <Toolbar 
+      <Toolbar
+        compact={isSmallScreen}
         onOpen={() => openFileInputRef.current?.click()}
         showSidebar={showSidebar}
         onToggleSidebar={() => setShowSidebar(!showSidebar)}
@@ -658,8 +668,11 @@ export default function Workspace({
       )}
 
       {isEditMode && (
-        <div className="bg-yellow-500/20 text-yellow-500 text-xs font-bold px-4 py-1.5 flex justify-center items-center border-b border-yellow-500/30 uppercase tracking-widest shadow-inner">
+        <div className="bg-yellow-500/20 text-yellow-500 text-xs font-bold px-4 py-1.5 flex justify-center items-center gap-2 border-b border-yellow-500/30 uppercase tracking-widest shadow-inner">
           Edit Mode Active
+          {isSmallScreen && (
+            <span className="normal-case font-medium tracking-normal opacity-80">· some tools open on a larger screen</span>
+          )}
         </div>
       )}
 
@@ -722,11 +735,21 @@ export default function Workspace({
           />
         ) : (
           <>
-            <div 
-              className={`bg-[var(--color-lumvale-surface)] border-r border-[var(--color-lumvale-border)] transition-all duration-300 ease-in-out flex flex-col z-20 ${
-                showSidebar ? 'w-64' : 'w-0'
-              }`}
-              style={{ width: showSidebar ? '256px' : '0px', overflow: 'hidden' }}
+            {/* Mobile: dim backdrop behind the slide-over drawer. */}
+            {isSmallScreen && showSidebar && (
+              <div
+                className="absolute inset-0 z-30 bg-black/40"
+                onClick={() => setShowSidebar(false)}
+                aria-hidden="true"
+              />
+            )}
+            <div
+              className={
+                isSmallScreen
+                  ? `absolute inset-y-0 left-0 z-40 w-72 max-w-[85%] bg-[var(--color-lumvale-surface)] border-r border-[var(--color-lumvale-border)] flex flex-col shadow-2xl ${showSidebar ? '' : 'hidden'}`
+                  : `bg-[var(--color-lumvale-surface)] border-r border-[var(--color-lumvale-border)] transition-all duration-300 ease-in-out flex flex-col z-20 ${showSidebar ? 'w-64' : 'w-0'}`
+              }
+              style={isSmallScreen ? undefined : { width: showSidebar ? '256px' : '0px', overflow: 'hidden' }}
             >
               {showSidebar && (
                 <div className="flex-1 flex flex-col w-64 min-w-[256px] overflow-hidden">
@@ -789,6 +812,7 @@ export default function Workspace({
                         pageOrder={pageOrder}
                         currentPage={currentPage}
                         onSelectPage={(page) => {
+                          if (isSmallScreen) setShowSidebar(false);
                           const el = document.getElementById(`pdf-page-${page}`);
                           if (el) {
                             isProgrammaticScroll.current = true;
@@ -822,6 +846,7 @@ export default function Workspace({
                         documentBytes={documentBytes!}
                         currentPage={currentPage}
                         onSelectPage={(page) => {
+                          if (isSmallScreen) setShowSidebar(false);
                           const el = document.getElementById(`pdf-page-${page}`);
                           if (el) {
                             isProgrammaticScroll.current = true;
