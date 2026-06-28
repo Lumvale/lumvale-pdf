@@ -470,12 +470,27 @@ export default function Workspace({
   };
 
   const handleEncryptDocument = async (userPass?: string, ownerPass?: string) => {
-    const encryptedBytes = await docEngine.encrypt(documentBytes!, {
-      userPassword: userPass,
-      ownerPassword: ownerPass,
-    });
-    setDocumentBytes(encryptedBytes);
-    setShowEncryption(false);
+    try {
+      const encryptedBytes = await docEngine.encrypt(documentBytes!, {
+        userPassword: userPass,
+        ownerPassword: ownerPass,
+      });
+      // Deliver the protected file as a download rather than swapping it into the
+      // viewer: the viewer (and Save) can't read password-protected bytes without
+      // the password, so replacing the working copy would lock the user out of
+      // their own open document. The on-screen document stays as-is.
+      const blob = new Blob([encryptedBytes as BlobPart], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${deriveBaseName(documentName)}-protected.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setShowEncryption(false);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to encrypt document.');
+    }
   };
 
   const handleApplyWatermark = async (options: any) => {
