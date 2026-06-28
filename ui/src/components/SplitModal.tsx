@@ -184,7 +184,7 @@ export default function SplitModal({ documentBytes, pageCount, onClose }: SplitM
           <button 
             onClick={handleSplit}
             disabled={isProcessing}
-            className="px-4 py-2 rounded text-sm bg-lumvale-primary text-[var(--color-lumvale-text)] font-bold hover:bg-lumvale-primary/90 transition-colors disabled:opacity-50 min-w-[120px]"
+            className="px-4 py-2 rounded text-sm bg-lumvale-primary text-[var(--color-lumvale-bg)] font-bold hover:bg-lumvale-primary/90 transition-colors disabled:opacity-50 min-w-[120px]"
           >
             {isProcessing ? `Splitting ${Math.round(progress)}%` : 'Split & Download ZIP'}
           </button>

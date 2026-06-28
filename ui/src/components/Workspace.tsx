@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback, startTransition } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from './Sidebar';
 import PDFCanvas from './PDFCanvas';
 import { LumvalePDFEngine } from '@lumvale/pdf-core';
@@ -18,12 +17,24 @@ import Toolbar from './Toolbar';
 import Bookmarks from './Bookmarks';
 import { LayoutGrid, Bookmark } from 'lucide-react';
 import SaveModal from './SaveModal';
+import ExportImageModal from './ExportImageModal';
+import type { ExportImageRequest } from './ExportImageModal';
+import AboutModal from './AboutModal';
+import { exportPagesToImages } from '../utils/exportImages';
 import AnnotationToolbar from './AnnotationToolbar';
 import type { Annotation, AnnotationType } from './AnnotationOverlay';
 import { useDocumentEngine } from '../engine';
 import { useIsSmallScreen } from '../hooks/useIsSmallScreen';
 
 const MAIN_VIEWER_WINDOW = 6;
+
+/** Internal render scale that the UI presents as "100%". pdf.js renders at this
+ *  scale for crisp output; the zoom % shown to the user is relative to it. */
+const BASE_ZOOM = 1.5;
+/** Each zoom button press moves the displayed percentage by 25%. */
+const ZOOM_STEP = BASE_ZOOM * 0.25;
+const MIN_ZOOM = BASE_ZOOM * 0.25; // 25%
+const MAX_ZOOM = BASE_ZOOM * 3;    // 300%
 
 export interface WorkspaceProps {
   documentBytes: Uint8Array | null;
@@ -121,6 +132,8 @@ export default function Workspace({
   const [selectedPages, setSelectedPages] = useState<Set<number>>(new Set());
   const [showSplitModal, setShowSplitModal] = useState(false);
   const [showWatermarkModal, setShowWatermarkModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const openFileInputRef = useRef<HTMLInputElement>(null);
@@ -139,14 +152,36 @@ export default function Workspace({
       if (e.ctrlKey) {
         e.preventDefault();
         // Adjust zoom sensitivity based on deltaY
-        const zoomChange = e.deltaY * -0.005; 
-        setZoom(z => Math.min(Math.max(z + zoomChange, 0.5), 4.0));
+        const zoomChange = e.deltaY * -0.005;
+        setZoom(z => Math.min(Math.max(z + zoomChange, MIN_ZOOM), MAX_ZOOM));
       }
     };
 
     // Needs to be passive: false to prevent the entire browser tab from zooming
     container.addEventListener('wheel', handleWheel, { passive: false });
     return () => container.removeEventListener('wheel', handleWheel);
+  }, []);
+
+  // Keyboard zoom: Ctrl/Cmd +/- to zoom, Ctrl/Cmd+0 to reset to 100%.
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const target = e.target as HTMLElement | null;
+      // Don't hijack typing in form fields (e.g. modal inputs).
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        setZoom(z => Math.min(z + ZOOM_STEP, MAX_ZOOM));
+      } else if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        setZoom(z => Math.max(z - ZOOM_STEP, MIN_ZOOM));
+      } else if (e.key === '0') {
+        e.preventDefault();
+        setZoom(BASE_ZOOM);
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
   }, []);
 
   // Initialize sequential page order
@@ -328,8 +363,29 @@ export default function Workspace({
     setSaveModalOpen(true);
   };
 
-  const handleExport = () => {
-    alert('Export to formats other than PDF is coming soon! For now, use "Save As..." to export the PDF.');
+  const handleExport = () => setShowExportModal(true);
+
+  /** Strip a trailing extension so exported images inherit the document's name. */
+  const deriveBaseName = (name: string) =>
+    (name || 'document').replace(/\.[^./\\]+$/, '') || 'document';
+
+  const handleExportImages = async (
+    req: ExportImageRequest,
+    onProgress?: (done: number, total: number) => void,
+  ) => {
+    // Map visual page positions to the underlying PDF page numbers so the
+    // export honours any reordering/deletions the user has made.
+    const pageNumbers = req.visualPages
+      .map(v => pageOrder[v - 1])
+      .filter((p): p is number => typeof p === 'number');
+    if (pageNumbers.length === 0) throw new Error('No valid pages to export.');
+
+    await exportPagesToImages(
+      documentBytes!,
+      { format: req.format, scale: req.scale, pageNumbers, baseName: deriveBaseName(documentName) },
+      onProgress,
+    );
+    setShowExportModal(false);
   };
 
   const handleReorderPages = (startIndex: number, endIndex: number) => {
@@ -601,9 +657,12 @@ export default function Workspace({
         onSplit={() => setShowSplitModal(true)}
         onCompress={handleCompress}
         onWatermark={() => setShowWatermarkModal(true)}
+        onBates={() => setShowBatesModal(true)}
+        onHeadersFooters={() => setShowHeaderFooterModal(true)}
         onMetadata={handleOpenMetadata}
         onEncrypt={() => setShowEncryption(true)}
         onCheckUpdates={handleCheckUpdates}
+        onAbout={() => setShowAbout(true)}
         isCompressing={isCompressing}
         isEditMode={isEditMode}
         onCloseDocument={onCloseDocument}
@@ -634,18 +693,24 @@ export default function Workspace({
         onMetadata={handleOpenMetadata}
         onEncrypt={() => setShowEncryption(true)}
         zoom={zoom}
-        onZoomIn={() => setZoom(z => Math.min(z + 0.25, 4.0))}
-        onZoomOut={() => setZoom(z => Math.max(z - 0.25, 0.5))}
+        onZoomIn={() => setZoom(z => Math.min(z + ZOOM_STEP, MAX_ZOOM))}
+        onZoomOut={() => setZoom(z => Math.max(z - ZOOM_STEP, MIN_ZOOM))}
+        onFitWidth={() => {
+          const c = scrollContainerRef.current;
+          if (!c) return;
+          // Leave room for vertical scrollbar + a little breathing space.
+          const avail = c.clientWidth - 48;
+          if (avail <= 0) return;
+          setZoom(Math.min(Math.max(avail / pageBaseSize.w, MIN_ZOOM), MAX_ZOOM));
+        }}
         isEditMode={isEditMode}
-        onToggleEditMode={() => {
-          setIsEditMode(!isEditMode);
-          if (isEditMode) setAnnotateMode(false);
-        }}
+        onToggleEditMode={() => setIsEditMode(v => !v)}
         annotateMode={annotateMode}
-        onToggleAnnotate={() => {
-          setAnnotateMode(!annotateMode);
-          if (!annotateMode) setIsEditMode(false);
-        }}
+        // Annotation is additive and reversible (it isn't applied until save), so
+        // it's available without Edit Mode and the two modes coexist freely —
+        // matching how comment tools work in Acrobat/Preview.
+        onToggleAnnotate={() => setAnnotateMode(v => !v)}
+        onZoomReset={() => setZoom(BASE_ZOOM)}
         isOrganizeMode={viewMode === 'organizer'}
         onOrganize={() => setViewMode(v => v === 'document' ? 'organizer' : 'document')}
         customToolbarLeft={customToolbarLeft}
@@ -707,6 +772,17 @@ export default function Workspace({
           onClose={() => setShowHeaderFooterModal(false)}
         />
       )}
+
+      {showExportModal && documentBytes && (
+        <ExportImageModal
+          pageCount={pageOrder.length}
+          currentPage={currentPage}
+          onExport={handleExportImages}
+          onClose={() => setShowExportModal(false)}
+        />
+      )}
+
+      {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
       
       <div className="flex-1 flex overflow-hidden relative z-10 min-h-0">
         {!documentBytes ? (

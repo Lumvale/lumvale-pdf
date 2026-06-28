@@ -81,7 +81,7 @@ export default function EncryptionModal({ onEncrypt, onClose }: EncryptionModalP
             type="submit"
             onClick={handleSubmit}
             disabled={!userPassword && !ownerPassword}
-            className="px-6 py-2 text-sm bg-lumvale-primary text-[var(--color-lumvale-text)] rounded font-bold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 text-sm bg-lumvale-primary text-[var(--color-lumvale-bg)] rounded font-bold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Lock PDF
           </button>

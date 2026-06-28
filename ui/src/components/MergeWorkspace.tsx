@@ -153,7 +153,7 @@ export default function MergeWorkspace({ primaryPageCount, secondaryPageCount, o
                               setSecondaryPages(sourceClone);
                               setPrimaryPages(destClone);
                             }}
-                            className="absolute top-2 right-2 bg-lumvale-primary text-[var(--color-lumvale-text)] rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:scale-110"
+                            className="absolute top-2 right-2 bg-lumvale-primary text-[var(--color-lumvale-bg)] rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:scale-110"
                             title="Add to Working Document"
                           >
                             +
