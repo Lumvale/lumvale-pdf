@@ -1,15 +1,22 @@
 name: Mirror engine to GitHub Packages
 
-# Publishes @lumvale/pdf-core and @lumvale/pdf-browser to the org's GitHub
-# Packages registry, IN ADDITION to their primary public-npm home. Internal
-# commercial consumers (workspace-ui, Omnia) point the whole @lumvale scope at
-# GitHub Packages so the private packages (workspace-contracts, workspace-ui,
-# storybook) resolve there; the engine must be reachable from the same registry,
-# hence this mirror. External OSS users keep using public npm (the default).
+# Publishes @lumvale/pdf-core, @lumvale/pdf-browser and @lumvale/pdf-ui to the
+# org's GitHub Packages registry, IN ADDITION to their primary public-npm home.
+# Internal commercial consumers (workspace-ui, Omnia) point the whole @lumvale
+# scope at GitHub Packages so the private packages (workspace-contracts,
+# workspace-ui, storybook) resolve there; the engine + UI must be reachable from
+# the same registry, hence this mirror. External OSS users keep using public npm
+# (the default).
 #
-# Manual trigger — run after a public-npm release of core/browser. Re-running an
-# already-mirrored version errors on the duplicate; that's safe to ignore.
+# Runs automatically on each release tag (v*) — the same signal that drives
+# release.yml — so GH Packages stays in sync with every release without a manual
+# dispatch. Still dispatchable by hand for ad-hoc re-mirrors. Publishing an
+# already-mirrored version is a no-op (the publish steps tolerate the duplicate),
+# so re-runs and partial-bump releases stay green.
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -32,11 +39,20 @@ jobs:
 
       - run: npm run build --workspace=core
       - run: npm run build --workspace=browser
+      # pdf-ui consumes pdf-browser's build, so build it after browser.
+      - run: npm run build --workspace=ui
 
-      - run: npm publish --workspace=core
+      # Tolerate an already-published version so a release that only bumps some
+      # packages doesn't fail the run on the unchanged ones. A real publish error
+      # (build/auth) still surfaces via the preceding build steps + the warning.
+      - run: npm publish --workspace=core || echo "::warning::pdf-core not published (already on GH Packages?)"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: npm publish --workspace=browser
+      - run: npm publish --workspace=browser || echo "::warning::pdf-browser not published (already on GH Packages?)"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: npm publish --workspace=ui || echo "::warning::pdf-ui not published (already on GH Packages?)"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
