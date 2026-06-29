@@ -5,6 +5,10 @@ All notable changes to the Lumvale-PDF project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Viewer aids: dual-page view + ruler & grid guides** (`@lumvale/pdf-ui` 0.4.0): the workspace now
+  offers a side-by-side (book) page layout and toggleable ruler and grid overlays, via a small
+  Dual / Ruler / Grid control cluster in the viewer. Ships a new `ViewAids` component and the pure
+  `pagePairs` / `rulerTicks` helpers (exported for reuse and unit-tested in `viewAids.test.ts`).
 - **Document permission flags for encryption** (`@lumvale/pdf-core` 1.2.0, `@lumvale/pdf-ui` 0.3.0):
   `exportEncryptedBytes` / the engine `encrypt` option now accept granular `permissions`
   (printing, modifying, copying, annotating, filling forms, accessibility, document assembly),

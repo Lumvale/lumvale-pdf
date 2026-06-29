@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback, startTransition } from 'react';
 import Sidebar from './Sidebar';
 import PDFCanvas from './PDFCanvas';
+import ViewAids from './ViewAids';
+import { pagePairs } from '../utils/viewAids';
 import { LumvalePDFEngine } from '@lumvale/pdf-core';
 import MergeWorkspace from './MergeWorkspace';
 import type { PDFMetadata } from '@lumvale/pdf-core';
@@ -104,6 +106,10 @@ export default function Workspace({
   }, [isSmallScreen]);
   const [viewMode, setViewMode] = useState<'document' | 'organizer'>('document');
   const [zoom, setZoom] = useState(1.5);
+  // Viewer aids: dual-page (book) layout + ruler / grid guides.
+  const [dualPage, setDualPage] = useState(false);
+  const [showRuler, setShowRuler] = useState(false);
+  const [showGrid, setShowGrid] = useState(false);
   /** Intrinsic page size in PDF points, learned from the first rendered page.
    *  Used to size placeholders for pages outside the virtualization window so
    *  the scroll height stays stable. Defaults to US Letter. */
@@ -423,8 +429,15 @@ export default function Workspace({
   const handleRotatePage = async (index: number) => {
     try {
       const actualPageIndex = pageOrder[index] - 1;
-      const newBytes = await docEngine.rotatePage(documentBytes!, actualPageIndex, 90);
-      setDocumentBytes(newBytes);
+      const rotated = await docEngine.rotatePage(documentBytes!, actualPageIndex, 90);
+      // Copy into a fresh array to guarantee a new identity: the rotate engine can
+      // return bytes that alias the input buffer, which makes React's setState bail
+      // and the pdf cache (keyed by reference) serve the pre-rotate parse — so the
+      // page would stay visually unrotated even though the bytes changed.
+      const newBytes = new Uint8Array(rotated);
+      requestAnimationFrame(() => {
+        startTransition(() => setDocumentBytes(newBytes));
+      });
     } catch (err) {
       console.error(err);
       alert('Failed to rotate page.');
@@ -972,45 +985,76 @@ export default function Workspace({
               )}
             </div>
             
-            <div className="flex-1 flex flex-col min-w-0 min-h-0">
+            <div className="relative flex-1 flex flex-col min-w-0 min-h-0">
+              {/* Viewer-aid toggles. */}
+              <div className="absolute right-3 top-3 z-30 flex gap-1 rounded-lg border border-[var(--color-lumvale-border)] bg-[var(--color-lumvale-surface)]/90 p-1 shadow backdrop-blur-sm">
+                {([
+                  ['Dual', dualPage, () => setDualPage(v => !v), 'Side-by-side pages'],
+                  ['Ruler', showRuler, () => setShowRuler(v => !v), 'Toggle ruler'],
+                  ['Grid', showGrid, () => setShowGrid(v => !v), 'Toggle grid'],
+                ] as const).map(([label, active, onClick, title]) => (
+                  <button
+                    key={label}
+                    title={title}
+                    aria-pressed={active}
+                    aria-label={`toggle-${label.toLowerCase()}`}
+                    onClick={onClick}
+                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                      active
+                        ? 'bg-[var(--color-lumvale-primary)] text-white font-semibold'
+                        : 'text-[var(--color-lumvale-muted)] hover:text-[var(--color-lumvale-text)]'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
               <div
                 ref={scrollContainerRef}
                 id="main-scroll-container"
                 className="flex-1 min-h-0 overflow-y-auto w-full flex justify-center custom-scrollbar"
               >
-                <div 
+                <div
                   className="py-8 flex flex-col space-y-4"
-                  style={{ width: pageBaseSize.w * zoom }}
+                  style={{ width: pageBaseSize.w * zoom * (dualPage ? 2 : 1) + (dualPage ? 16 : 0) }}
                 >
-                  {pageOrder.map((pageNum, idx) => {
-                    const shouldMount = Math.abs((idx + 1) - currentPage) <= MAIN_VIEWER_WINDOW;
-                    return (
-                      <div key={`main-page-${pageNum}`} id={`pdf-page-${idx + 1}`} className="flex justify-center pdf-page-wrapper">
-                        {shouldMount ? (
-                          <PDFCanvas
-                            documentBytes={documentBytes}
-                            pageNumber={pageNum}
-                            scale={zoom}
-                            activeAnnotationTool={annotateMode ? activeAnnotationTool : null}
-                            activeAnnotationColor={activeAnnotationColor}
-                            activeAnnotationStrokeWidth={activeAnnotationStrokeWidth}
-                            annotations={annotations}
-                            onAnnotationsChange={setAnnotations}
-                            onRenderedSize={handleRenderedSize}
-                            placeholderWidth={pageBaseSize.w * zoom}
-                            placeholderHeight={pageBaseSize.h * zoom}
-                          />
-                        ) : (
-                          <div
-                            className="relative shadow-2xl bg-white"
-                            style={{ width: pageBaseSize.w * zoom, height: pageBaseSize.h * zoom, maxWidth: '100%' }}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
+                  {(dualPage ? pagePairs(pageOrder) : pageOrder.map((p) => [p])).map((row, rowIdx) => (
+                    <div key={`row-${rowIdx}`} className="flex justify-center gap-4">
+                      {row.map((pageNum, j) => {
+                        const idx = rowIdx * (dualPage ? 2 : 1) + j;
+                        const shouldMount = Math.abs((idx + 1) - currentPage) <= MAIN_VIEWER_WINDOW;
+                        return (
+                          <div key={`main-page-${pageNum}`} id={`pdf-page-${idx + 1}`} className="flex justify-center pdf-page-wrapper">
+                            {shouldMount ? (
+                              <PDFCanvas
+                                documentBytes={documentBytes}
+                                pageNumber={pageNum}
+                                scale={zoom}
+                                activeAnnotationTool={annotateMode ? activeAnnotationTool : null}
+                                activeAnnotationColor={activeAnnotationColor}
+                                activeAnnotationStrokeWidth={activeAnnotationStrokeWidth}
+                                annotations={annotations}
+                                onAnnotationsChange={setAnnotations}
+                                onRenderedSize={handleRenderedSize}
+                                placeholderWidth={pageBaseSize.w * zoom}
+                                placeholderHeight={pageBaseSize.h * zoom}
+                              />
+                            ) : (
+                              <div
+                                className="relative shadow-2xl bg-white"
+                                style={{ width: pageBaseSize.w * zoom, height: pageBaseSize.h * zoom, maxWidth: '100%' }}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
                 </div>
               </div>
+
+              <ViewAids showRuler={showRuler} showGrid={showGrid} />
             </div>
             {rightSidebar && (
               <div className="flex-none border-l border-[var(--color-lumvale-border)] bg-[var(--color-lumvale-surface)] h-full overflow-hidden">
