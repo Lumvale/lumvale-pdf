@@ -1,14 +1,15 @@
 name: Mirror engine to GitHub Packages
 
-# Publishes @lumvale/pdf-core and @lumvale/pdf-browser to the org's GitHub
-# Packages registry, IN ADDITION to their primary public-npm home. Internal
-# commercial consumers (workspace-ui, Omnia) point the whole @lumvale scope at
-# GitHub Packages so the private packages (workspace-contracts, workspace-ui,
-# storybook) resolve there; the engine must be reachable from the same registry,
-# hence this mirror. External OSS users keep using public npm (the default).
+# Publishes @lumvale/pdf-core, @lumvale/pdf-browser and @lumvale/pdf-ui to the
+# org's GitHub Packages registry, IN ADDITION to their primary public-npm home.
+# Internal commercial consumers (workspace-ui, Omnia) point the whole @lumvale
+# scope at GitHub Packages so the private packages (workspace-contracts,
+# workspace-ui, storybook) resolve there; the engine + UI must be reachable from
+# the same registry, hence this mirror. External OSS users keep using public npm
+# (the default).
 #
-# Manual trigger — run after a public-npm release of core/browser. Re-running an
-# already-mirrored version errors on the duplicate; that's safe to ignore.
+# Manual trigger — run after a public-npm release of core/browser/ui. Re-running
+# an already-mirrored version errors on the duplicate; that's safe to ignore.
 on:
   workflow_dispatch:
 
@@ -32,11 +33,17 @@ jobs:
 
       - run: npm run build --workspace=core
       - run: npm run build --workspace=browser
+      # pdf-ui consumes pdf-browser's build, so build it after browser.
+      - run: npm run build --workspace=ui
 
       - run: npm publish --workspace=core
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - run: npm publish --workspace=browser
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: npm publish --workspace=ui
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
