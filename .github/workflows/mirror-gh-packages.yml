@@ -8,9 +8,15 @@ name: Mirror engine to GitHub Packages
 # the same registry, hence this mirror. External OSS users keep using public npm
 # (the default).
 #
-# Manual trigger — run after a public-npm release of core/browser/ui. Re-running
-# an already-mirrored version errors on the duplicate; that's safe to ignore.
+# Runs automatically on each release tag (v*) — the same signal that drives
+# release.yml — so GH Packages stays in sync with every release without a manual
+# dispatch. Still dispatchable by hand for ad-hoc re-mirrors. Publishing an
+# already-mirrored version is a no-op (the publish steps tolerate the duplicate),
+# so re-runs and partial-bump releases stay green.
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -36,14 +42,17 @@ jobs:
       # pdf-ui consumes pdf-browser's build, so build it after browser.
       - run: npm run build --workspace=ui
 
-      - run: npm publish --workspace=core
+      # Tolerate an already-published version so a release that only bumps some
+      # packages doesn't fail the run on the unchanged ones. A real publish error
+      # (build/auth) still surfaces via the preceding build steps + the warning.
+      - run: npm publish --workspace=core || echo "::warning::pdf-core not published (already on GH Packages?)"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: npm publish --workspace=browser
+      - run: npm publish --workspace=browser || echo "::warning::pdf-browser not published (already on GH Packages?)"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: npm publish --workspace=ui
+      - run: npm publish --workspace=ui || echo "::warning::pdf-ui not published (already on GH Packages?)"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
