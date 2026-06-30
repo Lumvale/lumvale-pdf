@@ -4,6 +4,13 @@ All notable changes to the Lumvale-PDF project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **Viewer aids hidden on small screens** (`@lumvale/pdf-ui` 0.8.0): the dual-page (side-by-side),
+  ruler, and grid toggles are desktop-precision aids that don't fit a phone, so on small screens
+  the workspace no longer renders their toolbar toggles and forces the viewer back to single-page
+  with no overlays. The underlying toggle state is preserved (derived from `useIsSmallScreen`), so
+  returning to a wide viewport restores whatever was on.
+
 ### Added
 - **Viewer aids: dual-page view + ruler & grid guides** (`@lumvale/pdf-ui` 0.4.0): the workspace now
   offers a side-by-side (book) page layout and toggleable ruler and grid overlays, via a small
