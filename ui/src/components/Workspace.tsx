@@ -147,6 +147,15 @@ export default function Workspace({
   const [dualPage, setDualPage] = useState(false);
   const [showRuler, setShowRuler] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
+  // The viewer aids are desktop-precision tools that don't fit a phone — a
+  // side-by-side spread, a ruler, or a grid overlay is unusable at narrow
+  // widths. On small screens we suppress them (and hide their toggles in the
+  // Toolbar, below) while keeping the underlying toggle state, so returning to a
+  // wide viewport restores whatever was on.
+  const viewAidsEnabled = !isSmallScreen;
+  const dualPageActive = dualPage && viewAidsEnabled;
+  const showRulerActive = showRuler && viewAidsEnabled;
+  const showGridActive = showGrid && viewAidsEnabled;
   /** Intrinsic page size in PDF points, learned from the first rendered page.
    *  Used to size placeholders for pages outside the virtualization window so
    *  the scroll height stays stable. Defaults to US Letter. */
@@ -809,14 +818,14 @@ export default function Workspace({
         customToolbarLeft={customToolbarLeft}
         customToolbarCenter={customToolbarCenter}
         customToolbarRight={customToolbarRight}
-        viewAids={{
+        viewAids={viewAidsEnabled ? {
           dualPage,
           showRuler,
           showGrid,
           onToggleDual: () => setDualPage(v => !v),
           onToggleRuler: () => setShowRuler(v => !v),
           onToggleGrid: () => setShowGrid(v => !v),
-        }}
+        } : undefined}
       />
 
       {annotateMode && (
@@ -1057,12 +1066,12 @@ export default function Workspace({
               >
                 <div
                   className="py-8 flex flex-col space-y-4"
-                  style={{ width: pageBaseSize.w * zoom * (dualPage ? 2 : 1) + (dualPage ? 16 : 0) }}
+                  style={{ width: pageBaseSize.w * zoom * (dualPageActive ? 2 : 1) + (dualPageActive ? 16 : 0) }}
                 >
-                  {(dualPage ? pagePairs(pageOrder) : pageOrder.map((p) => [p])).map((row, rowIdx) => (
+                  {(dualPageActive ? pagePairs(pageOrder) : pageOrder.map((p) => [p])).map((row, rowIdx) => (
                     <div key={`row-${rowIdx}`} className="flex justify-center gap-4">
                       {row.map((pageNum, j) => {
-                        const idx = rowIdx * (dualPage ? 2 : 1) + j;
+                        const idx = rowIdx * (dualPageActive ? 2 : 1) + j;
                         const shouldMount = Math.abs((idx + 1) - currentPage) <= MAIN_VIEWER_WINDOW;
                         return (
                           <div key={`main-page-${pageNum}`} id={`pdf-page-${idx + 1}`} className="flex justify-center pdf-page-wrapper">
@@ -1094,7 +1103,7 @@ export default function Workspace({
                 </div>
               </div>
 
-              <ViewAids showRuler={showRuler} showGrid={showGrid} />
+              <ViewAids showRuler={showRulerActive} showGrid={showGridActive} />
             </div>
             {rightSidebar && (
               <div className="flex-none border-l border-[var(--color-lumvale-border)] bg-[var(--color-lumvale-surface)] h-full overflow-hidden">
