@@ -180,7 +180,12 @@ export default function TopBar({
           </div>
         ))}
 
-        <div className={`relative h-full flex items-center ${compact || hideToolsMenu ? 'hidden' : ''}`}>
+        {/* When the host folds the native page ops into its own menus it sets
+            hideToolsMenu, so we drop the Tools menu entirely (not just CSS-hide
+            it) — it shouldn't linger in the DOM or tab order. `compact` still
+            uses CSS hiding for the responsive small-screen case. */}
+        {!hideToolsMenu && (
+        <div className={`relative h-full flex items-center ${compact ? 'hidden' : ''}`}>
           <button
             className={`px-3 h-full flex items-center transition-colors ${activeMenu === 'tools' ? 'bg-[var(--color-lumvale-border)] text-[var(--color-lumvale-text)]' : 'text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)]'}`}
             onClick={() => toggleMenu('tools')}
@@ -236,9 +241,10 @@ export default function TopBar({
             </div>
           )}
         </div>
+        )}
 
         <div className="relative h-full flex items-center">
-          <button 
+          <button
             className={`px-3 h-full flex items-center transition-colors ${activeMenu === 'help' ? 'bg-[var(--color-lumvale-border)] text-[var(--color-lumvale-text)]' : 'text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)]'}`}
             onClick={() => toggleMenu('help')}
           >
