@@ -26,6 +26,12 @@ interface TopBarProps {
   onSaveAs?: () => void;
   customFileMenuItems?: React.ReactNode;
   customToolsMenuItems?: React.ReactNode;
+  /**
+   * Additional top-level menus the host app can add to the menu bar, rendered
+   * after File (before Tools). Each becomes its own dropdown so apps can spread
+   * their features across categorised menus instead of overloading Tools.
+   */
+  customMenus?: { id: string; label: string; items: React.ReactNode }[];
   customTopBarRight?: React.ReactNode;
 }
 
@@ -59,9 +65,10 @@ export default function TopBar({
   onSaveAs,
   customFileMenuItems,
   customToolsMenuItems,
+  customMenus,
   customTopBarRight
 }: TopBarProps) {
-  const [activeMenu, setActiveMenu] = useState<'file' | 'tools' | 'help' | null>(null);
+  const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [isDark, setIsDark] = useState(isDarkMode());
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -81,7 +88,7 @@ export default function TopBar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const toggleMenu = (menu: 'file' | 'tools' | 'help') => {
+  const toggleMenu = (menu: string) => {
     setActiveMenu(activeMenu === menu ? null : menu);
   };
 
@@ -147,6 +154,27 @@ export default function TopBar({
             </div>
           )}
         </div>
+
+        {/* Host-app menus (e.g. Create / Edit / AI / Secure / View) — one
+            dropdown each. Clicking any item closes the menu (bubbled onClick). */}
+        {(customMenus ?? []).map((m) => (
+          <div key={m.id} className={`relative h-full flex items-center ${compact ? 'hidden' : ''}`}>
+            <button
+              className={`px-3 h-full flex items-center transition-colors ${activeMenu === m.id ? 'bg-[var(--color-lumvale-border)] text-[var(--color-lumvale-text)]' : 'text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)]'}`}
+              onClick={() => toggleMenu(m.id)}
+            >
+              {m.label}
+            </button>
+            {!compact && activeMenu === m.id && (
+              <div
+                className="absolute top-full left-0 mt-0 w-56 bg-[var(--color-lumvale-surface)] border border-[var(--color-lumvale-border)] shadow-2xl rounded-b-md py-1"
+                onClick={() => setActiveMenu(null)}
+              >
+                {m.items}
+              </div>
+            )}
+          </div>
+        ))}
 
         <div className={`relative h-full flex items-center ${compact ? 'hidden' : ''}`}>
           <button
