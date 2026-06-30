@@ -32,6 +32,9 @@ interface TopBarProps {
    * their features across categorised menus instead of overloading Tools.
    */
   customMenus?: { id: string; label: string; items: React.ReactNode }[];
+  /** Hide the built-in Tools menu (e.g. when the host folds the native page ops
+   *  into its own menus via customMenus + nativeTools). */
+  hideToolsMenu?: boolean;
   customTopBarRight?: React.ReactNode;
 }
 
@@ -66,6 +69,7 @@ export default function TopBar({
   customFileMenuItems,
   customToolsMenuItems,
   customMenus,
+  hideToolsMenu,
   customTopBarRight
 }: TopBarProps) {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
@@ -176,7 +180,7 @@ export default function TopBar({
           </div>
         ))}
 
-        <div className={`relative h-full flex items-center ${compact ? 'hidden' : ''}`}>
+        <div className={`relative h-full flex items-center ${compact || hideToolsMenu ? 'hidden' : ''}`}>
           <button
             className={`px-3 h-full flex items-center transition-colors ${activeMenu === 'tools' ? 'bg-[var(--color-lumvale-border)] text-[var(--color-lumvale-text)]' : 'text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)]'}`}
             onClick={() => toggleMenu('tools')}
