@@ -50,6 +50,8 @@ export interface WorkspaceProps {
   customToolbarRight?: React.ReactNode;
   customFileMenuItems?: React.ReactNode;
   customToolsMenuItems?: React.ReactNode;
+  /** Extra top-level menus added to the menu bar after File (see TopBar). */
+  customMenus?: { id: string; label: string; items: React.ReactNode }[];
   customTopBarRight?: React.ReactNode;
   customTabBar?: React.ReactNode;
   onSave?: () => void;
@@ -77,6 +79,7 @@ export default function Workspace({
   customToolbarRight,
   customFileMenuItems,
   customToolsMenuItems,
+  customMenus,
   customTopBarRight,
   customTabBar,
   onFilesSelected,
@@ -707,6 +710,7 @@ export default function Workspace({
         onSaveAs={handleSaveAs}
         customFileMenuItems={customFileMenuItems}
         customToolsMenuItems={customToolsMenuItems}
+        customMenus={customMenus}
         customTopBarRight={customTopBarRight}
       />
       
@@ -754,6 +758,14 @@ export default function Workspace({
         customToolbarLeft={customToolbarLeft}
         customToolbarCenter={customToolbarCenter}
         customToolbarRight={customToolbarRight}
+        viewAids={{
+          dualPage,
+          showRuler,
+          showGrid,
+          onToggleDual: () => setDualPage(v => !v),
+          onToggleRuler: () => setShowRuler(v => !v),
+          onToggleGrid: () => setShowGrid(v => !v),
+        }}
       />
 
       {annotateMode && (
@@ -986,30 +998,7 @@ export default function Workspace({
             </div>
             
             <div className="relative flex-1 flex flex-col min-w-0 min-h-0">
-              {/* Viewer-aid toggles. */}
-              <div className="absolute right-3 top-3 z-30 flex gap-1 rounded-lg border border-[var(--color-lumvale-border)] bg-[var(--color-lumvale-surface)]/90 p-1 shadow backdrop-blur-sm">
-                {([
-                  ['Dual', dualPage, () => setDualPage(v => !v), 'Side-by-side pages'],
-                  ['Ruler', showRuler, () => setShowRuler(v => !v), 'Toggle ruler'],
-                  ['Grid', showGrid, () => setShowGrid(v => !v), 'Toggle grid'],
-                ] as const).map(([label, active, onClick, title]) => (
-                  <button
-                    key={label}
-                    title={title}
-                    aria-pressed={active}
-                    aria-label={`toggle-${label.toLowerCase()}`}
-                    onClick={onClick}
-                    className={`px-2 py-1 text-xs rounded transition-colors ${
-                      active
-                        ? 'bg-[var(--color-lumvale-primary)] text-white font-semibold'
-                        : 'text-[var(--color-lumvale-muted)] hover:text-[var(--color-lumvale-text)]'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
+              {/* Viewer-aid toggles now live in the Toolbar (see Toolbar viewAids). */}
               <div
                 ref={scrollContainerRef}
                 id="main-scroll-container"

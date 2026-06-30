@@ -1,4 +1,14 @@
-import { PanelLeft, Files, Scissors, SplitSquareHorizontal, Minimize, Info, Lock, ZoomIn, ZoomOut, Pencil, Eye, LayoutGrid, FileDigit, PanelTop, StretchHorizontal } from 'lucide-react';
+import { PanelLeft, Files, Scissors, SplitSquareHorizontal, Minimize, Info, Lock, ZoomIn, ZoomOut, Pencil, Eye, LayoutGrid, FileDigit, PanelTop, StretchHorizontal, Columns2, Ruler, Grid2x2 } from 'lucide-react';
+
+/** State + handlers for the in-toolbar view-aid toggles (dual page / ruler / grid). */
+export interface ViewAidControls {
+  dualPage: boolean;
+  showRuler: boolean;
+  showGrid: boolean;
+  onToggleDual: () => void;
+  onToggleRuler: () => void;
+  onToggleGrid: () => void;
+}
 
 interface ToolbarProps {
   showSidebar: boolean;
@@ -37,6 +47,8 @@ interface ToolbarProps {
   customToolbarLeft?: React.ReactNode;
   customToolbarCenter?: React.ReactNode;
   customToolbarRight?: React.ReactNode;
+  /** Dual-page / ruler / grid toggles, rendered inline in the toolbar. */
+  viewAids?: ViewAidControls;
 }
 
 export default function Toolbar({
@@ -70,7 +82,8 @@ export default function Toolbar({
   compact = false,
   customToolbarLeft,
   customToolbarCenter,
-  customToolbarRight
+  customToolbarRight,
+  viewAids
 }: ToolbarProps) {
   return (
     <div className="h-12 bg-[var(--color-lumvale-surface)]/70 backdrop-blur-md border-b border-[var(--color-lumvale-border)] flex items-center px-3 gap-2 relative z-40">
@@ -228,6 +241,29 @@ export default function Toolbar({
       )}
 
       {customToolbarRight}
+
+      {viewAids && (
+        <>
+          <div className="w-px h-6 bg-[var(--color-lumvale-border)] mx-1"></div>
+          {([
+            [Columns2, 'Dual', viewAids.dualPage, viewAids.onToggleDual, 'Side-by-side pages'],
+            [Ruler, 'Ruler', viewAids.showRuler, viewAids.onToggleRuler, 'Toggle ruler'],
+            [Grid2x2, 'Grid', viewAids.showGrid, viewAids.onToggleGrid, 'Toggle grid'],
+          ] as const).map(([Icon, label, active, onClick, title]) => (
+            <button
+              key={label}
+              onClick={onClick}
+              title={title}
+              aria-pressed={active}
+              aria-label={`toggle-${label.toLowerCase()}`}
+              className={`px-2 py-1.5 rounded transition-colors flex items-center gap-1.5 text-xs ${active ? 'bg-[var(--color-lumvale-primary)] text-[var(--color-lumvale-bg)]' : 'text-[var(--color-lumvale-muted)] hover:bg-[var(--color-lumvale-border)] hover:text-[var(--color-lumvale-text)]'}`}
+            >
+              <Icon size={16} />
+              {label}
+            </button>
+          ))}
+        </>
+      )}
 
       <div className="flex-1"></div>
 
