@@ -132,20 +132,32 @@ export default function AnnotationOverlay({
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      // Don't delete if we are typing in an input or textarea
+      // Don't act while typing in an input or textarea (the text tool handles
+      // its own Enter/Escape).
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
-      
+
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedAnnotationId) {
         onAnnotationsChange(annotations.filter(a => a.id !== selectedAnnotationId));
+        setSelectedAnnotationId(null);
+      } else if (e.key === 'Escape') {
+        // Esc backs out one level: cancel the active drawing tool first, else
+        // clear the current selection (standard editor behaviour).
+        if (activeTool) {
+          onToolSelect?.(null);
+        } else if (selectedAnnotationId) {
+          setSelectedAnnotationId(null);
+        }
+      } else if (e.key === 'Enter' && selectedAnnotationId && !activeTool) {
+        // Enter confirms the current selection and exits selection mode.
         setSelectedAnnotationId(null);
       }
     };
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [selectedAnnotationId, annotations, onAnnotationsChange]);
+  }, [selectedAnnotationId, annotations, onAnnotationsChange, activeTool, onToolSelect]);
 
   const getCoordinates = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent): Point | null => {
     if (!svgRef.current) return null;
@@ -424,10 +436,16 @@ export default function AnnotationOverlay({
   // Only render annotations for this page
   const pageAnnotations = annotations.filter(a => a.pageIndex === pageIndex);
 
+  // Cursor signals the mode: a text caret for the text tool, a crosshair for the
+  // drawing tools, and the default arrow otherwise (selectable annotations set
+  // their own `move` cursor on hover).
+  const toolCursor = activeTool === 'text' ? 'text' : activeTool ? 'crosshair' : 'default';
+
   return (
-    <div 
+    <div
       className="absolute inset-0 z-20"
-      style={{ touchAction: activeTool ? 'none' : 'auto' }}
+      data-testid="annotation-overlay"
+      style={{ touchAction: activeTool ? 'none' : 'auto', cursor: toolCursor }}
       onMouseDown={handlePointerDown}
       onMouseMove={handlePointerMove}
       onMouseUp={handlePointerUp}
