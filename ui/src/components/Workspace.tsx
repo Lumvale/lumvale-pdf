@@ -38,6 +38,32 @@ const ZOOM_STEP = BASE_ZOOM * 0.25;
 const MIN_ZOOM = BASE_ZOOM * 0.25; // 25%
 const MAX_ZOOM = BASE_ZOOM * 3;    // 300%
 
+/** A host-provided top-level menu for the menu bar. */
+export interface WorkspaceCustomMenu {
+  id: string;
+  label: string;
+  items: React.ReactNode;
+}
+
+/** The built-in page operations, exposed so a host can fold them into its menus. */
+export interface NativeTools {
+  extractPages: () => void;
+  split: () => void;
+  compress: () => void;
+  watermark: () => void;
+  pageNumbering: () => void;
+  headersFooters: () => void;
+  metadata: () => void;
+  encrypt: () => void;
+}
+
+/** Live editor context passed to a `customMenus` function. */
+export interface WorkspaceMenuContext {
+  /** True when Edit Mode is on; false in Read-Only (gate mutating items by this). */
+  editMode: boolean;
+  nativeTools: NativeTools;
+}
+
 export interface WorkspaceProps {
   documentBytes: Uint8Array | null;
   documentName?: string;
@@ -50,8 +76,15 @@ export interface WorkspaceProps {
   customToolbarRight?: React.ReactNode;
   customFileMenuItems?: React.ReactNode;
   customToolsMenuItems?: React.ReactNode;
-  /** Extra top-level menus added to the menu bar after File (see TopBar). */
-  customMenus?: { id: string; label: string; items: React.ReactNode }[];
+  /**
+   * Extra top-level menus added to the menu bar after File (see TopBar). Either
+   * a static array, or a function given the live editor context so the host can
+   * gate items by edit mode (read-only) and fold the native page ops into its
+   * own menus. Pair with `hideToolsMenu` to drop the built-in Tools menu.
+   */
+  customMenus?: WorkspaceCustomMenu[] | ((ctx: WorkspaceMenuContext) => WorkspaceCustomMenu[]);
+  /** Hide the built-in Tools menu (when folding native ops into customMenus). */
+  hideToolsMenu?: boolean;
   customTopBarRight?: React.ReactNode;
   customTabBar?: React.ReactNode;
   onSave?: () => void;
@@ -80,6 +113,7 @@ export default function Workspace({
   customFileMenuItems,
   customToolsMenuItems,
   customMenus,
+  hideToolsMenu,
   customTopBarRight,
   customTabBar,
   onFilesSelected,
@@ -710,7 +744,24 @@ export default function Workspace({
         onSaveAs={handleSaveAs}
         customFileMenuItems={customFileMenuItems}
         customToolsMenuItems={customToolsMenuItems}
-        customMenus={customMenus}
+        customMenus={
+          typeof customMenus === 'function'
+            ? customMenus({
+                editMode: isEditMode,
+                nativeTools: {
+                  extractPages: () => setExtractMode(v => !v),
+                  split: () => setShowSplitModal(true),
+                  compress: handleCompress,
+                  watermark: () => setShowWatermarkModal(true),
+                  pageNumbering: () => setShowBatesModal(true),
+                  headersFooters: () => setShowHeaderFooterModal(true),
+                  metadata: handleOpenMetadata,
+                  encrypt: () => setShowEncryption(true),
+                },
+              })
+            : customMenus
+        }
+        hideToolsMenu={hideToolsMenu}
         customTopBarRight={customTopBarRight}
       />
       
