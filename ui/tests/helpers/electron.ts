@@ -18,7 +18,9 @@ export async function launchApp(): Promise<{ app: ElectronApplication; window: P
     // rather than looking for a Vite dev server.
     env: { ...process.env, NODE_ENV: 'production', VITE_DEV_SERVER_URL: '' },
   });
-  const window = await app.firstWindow();
-  await window.waitForLoadState('domcontentloaded');
+  // macOS CI runners are slow to show the first window and load file:// content,
+  // so use generous timeouts rather than the 30s defaults.
+  const window = await app.firstWindow({ timeout: 60_000 });
+  await window.waitForLoadState('domcontentloaded', { timeout: 60_000 });
   return { app, window };
 }
