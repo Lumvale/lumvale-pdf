@@ -50,8 +50,16 @@ const createWindow = () => {
 app.whenReady().then(() => {
   createWindow();
 
-  // Setup auto-updater
-  autoUpdater.checkForUpdatesAndNotify();
+  // Startup auto-update check. Only run it in a real installed (packaged) build:
+  // when unpackaged (dev, and the Playwright e2e harness that launches `electron .`)
+  // electron-updater's macOS path does main-process network/IO work that can block
+  // lifecycle delivery and leave the first window stuck before `domcontentloaded`,
+  // which is exactly what wedged the packaged-app launch on GitHub macOS runners.
+  // The on-demand `app:checkForUpdates` IPC handler below is unaffected and stays
+  // available to the renderer's "Check for Updates" menu in every build.
+  if (app.isPackaged) {
+    autoUpdater.checkForUpdatesAndNotify();
+  }
 
   ipcMain.handle('app:checkForUpdates', async () => {
     try {
@@ -94,7 +102,11 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  // Standard macOS apps stay resident when the last window closes. Under the e2e
+  // harness we must override that: Playwright's `app.close()` closes the window and
+  // then waits for the process to exit, so keeping it resident on darwin hangs
+  // worker teardown for the full 90s timeout. E2E_TEST is set by the launch helper.
+  if (process.platform !== 'darwin' || process.env.E2E_TEST) {
     app.quit();
   }
 });
