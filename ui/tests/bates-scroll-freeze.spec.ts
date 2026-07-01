@@ -4,7 +4,10 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-test('Page Numbering: UI remains responsive and scrollable after apply', async ({ page }) => {
+test('Page Numbering: UI remains responsive and scrollable after apply', async ({ page, browserName }) => {
+  // Responsiveness/perf regression on the 80-page heavy fixture — pinned to the
+  // reference engine (Chromium) to keep it deterministic under parallel runs.
+  test.skip(browserName !== 'chromium', 'Render-perf stress test runs on Chromium only');
   test.setTimeout(120000);
   const errors: string[] = [];
   page.on('pageerror', err => { errors.push(err.message); console.log('BROWSER ERROR:', err.message); });

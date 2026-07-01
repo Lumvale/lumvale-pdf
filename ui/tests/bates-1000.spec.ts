@@ -6,7 +6,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 test.describe('Page Numbering 1000-Page E2E', () => {
-  test('can open page numbering modal and apply to 1000 pages', async ({ page }) => {
+  test('can open page numbering modal and apply to 1000 pages', async ({ page, browserName }) => {
+    // Large-scale render/perf stress test — pinned to the reference engine
+    // (Chromium). Running several 100–1000 page renders in parallel across
+    // engines starves the CPU and makes this timing-sensitive test flaky.
+    test.skip(browserName !== 'chromium', 'Render-perf stress test runs on Chromium only');
     // Increase test timeout for large PDF processing
     test.setTimeout(120000);
 

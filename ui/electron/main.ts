@@ -10,7 +10,7 @@ if (started) {
 }
 
 app.setName('LumvalePDF');
-app.setAppUserModelId('com.vaultos.lumvalepdf');
+app.setAppUserModelId('com.lumvale.pdf');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

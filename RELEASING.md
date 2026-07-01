@@ -21,8 +21,8 @@ version and is released on its own cadence. These are the conventions to follow.
 - ⚠️ **Never start a tag with `v`** unless you intend to ship the desktop app:
   `release.yml` triggers on `v*` tags and runs `electron-builder` across
   Win/Mac/Linux. The package tags above start with `@`, so they don't trigger it.
-  (Note: `release.yml` must be updated to build the `browser` workspace before
-  the Electron step — see CI notes — before any `v*` desktop release will pass.)
+  `release.yml` now builds `core → browser → ui` before the Electron step, so a
+  `v*` tag produces a real bundle (see "Desktop app builds" below).
 
 ## GitHub Releases
 
@@ -63,6 +63,45 @@ CI and release workflows must do a **root (workspace) `npm install`** and build
 in order **core → browser → ui** — `ui`'s `tsc` needs `@lumvale/pdf-browser`'s
 emitted types. A per-package `cd ui && npm install` will fail to resolve the
 local packages.
+
+## Desktop app builds (Electron)
+
+The desktop app is packaged by **electron-builder** (config in `ui/package.json`
+`build`). Key settings:
+
+- **appId / AppUserModelID:** `com.lumvale.pdf` (also set in
+  `ui/electron/main.ts`). Keep the two in sync — it's the app's update/install
+  identity.
+- **Auto-update / publish target:** GitHub `Lumvale/lumvale-pdf`. `electron-updater`
+  checks this repo's Releases, so a `v*` tag must publish assets there.
+- **electronVersion is pinned** (`"electronVersion": "43.0.0"`) because
+  electron-builder can't resolve the hoisted monorepo range on its own.
+- Build locally: `npm run build --workspace=ui` then, from `ui/`,
+  `npx electron-builder --dir` (unpacked) or `npx electron-builder` (installers).
+
+### Code signing (optional — not configured)
+
+Unsigned installers **build fine**; signing only removes the OS "unknown
+publisher" prompts (Windows SmartScreen, macOS Gatekeeper). To sign later, provide
+these secrets and electron-builder picks them up automatically — no config change:
+
+- **Windows:** `CSC_LINK` (base64 .pfx or path), `CSC_KEY_PASSWORD`.
+- **macOS:** `CSC_LINK` + `CSC_KEY_PASSWORD`, and for notarization `APPLE_ID`,
+  `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`.
+
+### Microsoft Store path (no cert needed)
+
+To distribute on the **Microsoft Store**, you don't need to buy a code-signing
+certificate — the Store signs the package for you. Steps:
+
+1. Register the app in **Partner Center** and reserve its name/identity.
+2. Add an **`appx`/MSIX** target to the `win` build with the reserved
+   `identityName`, `publisher`, and `publisherDisplayName` from Partner Center.
+3. Build the `.appx`/`.msix` and submit it through Partner Center.
+
+Until the Partner Center identity is reserved, the `win` target stays on `nsis`
+(direct download) only — don't add a half-configured `appx` target, it will fail
+the Windows build.
 
 ## Future: automate with Changesets
 

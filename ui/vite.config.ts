@@ -31,11 +31,15 @@ export default defineConfig({
     VitePWA({
       disable: process.env.NODE_ENV !== 'production',
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
+        id: '/',
         name: 'LumvalePDF',
         short_name: 'LumvalePDF',
         description: 'A free, high-quality, and fast open-source PDF toolkit.',
+        scope: '/',
+        start_url: '/',
+        display: 'standalone',
         display_override: ['window-controls-overlay'],
         theme_color: '#0b0f19',
         background_color: '#0b0f19',
@@ -49,6 +53,14 @@ export default defineConfig({
             src: 'pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png'
+          },
+          {
+            // Maskable variant so Android/desktop installers can crop to the
+            // platform's icon shape without clipping content.
+            src: 'pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       },

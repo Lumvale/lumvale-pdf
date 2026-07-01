@@ -7,41 +7,101 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build-and-test:
+  # ---------------------------------------------------------------------------
+  # Unit tests for every workspace (core, browser, ui).
+  # ---------------------------------------------------------------------------
+  unit:
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - name: Build packages (core, browser)
+        run: |
+          npm run build --workspace=core
+          npm run build --workspace=browser
+      - name: Unit tests (core, browser, ui)
+        run: |
+          npm run test --workspace=core
+          npm run test --workspace=browser
+          npm run test --workspace=ui
 
-    - name: Use Node.js 20
-      uses: actions/setup-node@v6
-      with:
-        node-version: 20
-        cache: 'npm'
+  # ---------------------------------------------------------------------------
+  # Web e2e + computer-vision (functional matrix, visual regression, OCR, PWA).
+  # Runs inside the pinned Playwright image so the browsers AND font rendering
+  # match the committed Linux visual baselines (tests/__screenshots__/*-linux.png).
+  # ---------------------------------------------------------------------------
+  e2e-web:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-jammy
+    env:
+      # The web suite doesn't need the Electron binary — skip the heavy download.
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install dependencies
+        run: npm ci
+      - name: Build packages (core, browser)
+        run: |
+          npm run build --workspace=core
+          npm run build --workspace=browser
+      - name: Run web e2e + CV suite
+        run: npx playwright test
+        working-directory: ./ui
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-web
+          path: |
+            ui/playwright-report/
+            ui/test-results/
+          retention-days: 14
 
-    # Workspace-aware install from the repo root so the local packages
-    # (@lumvale/pdf-core, @lumvale/pdf-browser) link instead of resolving from
-    # the registry.
-    - name: Install Dependencies
-      run: npm install
-
-    # Build in dependency order: core -> browser, since ui's tsc needs the
-    # browser package's emitted types.
-    - name: Build packages (core, browser)
-      run: |
-        npm run build --workspace=core
-        npm run build --workspace=browser
-
-    - name: Unit tests (core, browser)
-      run: |
-        npm run test --workspace=core
-        npm run test --workspace=browser
-
-    - name: Build UI
-      run: npm run build --workspace=ui
-
-    - name: Install Playwright Browsers
-      run: cd ui && npx playwright install --with-deps
-
-    - name: Run E2E Tests
-      run: cd ui && npx playwright test
+  # ---------------------------------------------------------------------------
+  # Electron desktop app e2e across all three shipping platforms.
+  # ---------------------------------------------------------------------------
+  e2e-electron:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Build packages (core, browser, ui)
+        run: |
+          npm run build --workspace=core
+          npm run build --workspace=browser
+          npm run build --workspace=ui
+      # Electron needs a display on Linux; wrap the run in a virtual framebuffer.
+      - name: Electron e2e (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npx playwright test -c playwright.electron.config.ts
+        working-directory: ./ui
+      - name: Electron e2e (macOS / Windows)
+        if: runner.os != 'Linux'
+        run: npx playwright test -c playwright.electron.config.ts
+        working-directory: ./ui
+      - name: Upload Electron report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-electron-${{ matrix.os }}
+          path: |
+            ui/playwright-report/
+            ui/test-results/
+          retention-days: 14
