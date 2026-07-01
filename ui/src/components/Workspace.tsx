@@ -186,6 +186,8 @@ export default function Workspace({
   const [showWatermarkModal, setShowWatermarkModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+  const [showBatesModal, setShowBatesModal] = useState(false);
+  const [showHeaderFooterModal, setShowHeaderFooterModal] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const openFileInputRef = useRef<HTMLInputElement>(null);
@@ -236,6 +238,55 @@ export default function Workspace({
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, []);
+
+  // Industry-standard document shortcuts: Ctrl/Cmd+S saves, Ctrl/Cmd+O opens.
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.isContentEditable)) return;
+      const key = e.key.toLowerCase();
+      if (key === 's') {
+        e.preventDefault();
+        handleSave();
+      } else if (key === 'o') {
+        e.preventDefault();
+        openFileInputRef.current?.click();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  });
+
+  // Escape closes whichever modal is open (standard dismissal). Only bound while
+  // a modal is actually open so it never swallows Escape from other handlers
+  // (e.g. the annotation tool cancel).
+  useEffect(() => {
+    const anyModalOpen =
+      isSaveModalOpen || showMetadata || showEncryption || showSplitModal ||
+      showWatermarkModal || showExportModal || showAbout || showBatesModal ||
+      showHeaderFooterModal;
+    if (!anyModalOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setSaveModalOpen(false);
+      setSaveAction(null);
+      setShowMetadata(false);
+      setShowEncryption(false);
+      setShowSplitModal(false);
+      setShowWatermarkModal(false);
+      setShowExportModal(false);
+      setShowAbout(false);
+      setShowBatesModal(false);
+      setShowHeaderFooterModal(false);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [
+    isSaveModalOpen, showMetadata, showEncryption, showSplitModal,
+    showWatermarkModal, showExportModal, showAbout, showBatesModal,
+    showHeaderFooterModal,
+  ]);
 
   // Initialize sequential page order
   useEffect(() => {
@@ -489,9 +540,6 @@ export default function Workspace({
       alert('Failed to rotate page.');
     }
   };
-
-  const [showBatesModal, setShowBatesModal] = useState(false);
-  const [showHeaderFooterModal, setShowHeaderFooterModal] = useState(false);
 
   const handleCompress = async () => {
     setIsCompressing(true);
