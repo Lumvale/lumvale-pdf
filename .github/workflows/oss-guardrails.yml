@@ -1,0 +1,42 @@
+name: OSS Guardrails
+
+# Enforces the open-core boundary for this PUBLIC repo: no commercial/private
+# Lumvale code or dependencies may enter it. See the org's
+# Engineering/Architecture/oss-and-ip-isolation.md.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  boundary:
+    name: Open-core boundary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: No private/commercial Lumvale deps or imports
+        run: node .github/scripts/check-oss-boundary.mjs
+      - name: Root LICENSE present (warning until a license is chosen — story P2)
+        run: |
+          test -f LICENSE || echo "::warning::No root LICENSE yet. An OSS repo needs one (see conformance story P2). Flip this step to blocking once the license is chosen."
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Use the gitleaks CLI (MIT, free) directly — the gitleaks-action wrapper
+      # requires a paid license for org-owned repos.
+      - name: gitleaks (CLI)
+        run: |
+          VER=8.18.4
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${VER}/gitleaks_${VER}_linux_x64.tar.gz" -o gl.tgz
+          tar -xzf gl.tgz gitleaks
+          ./gitleaks detect --no-git --config .gitleaks.toml --redact --exit-code 1 --source .
