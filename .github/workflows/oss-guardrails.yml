@@ -53,11 +53,11 @@ jobs:
       # Reports all dependency licenses and warns on strong copyleft (GPL/AGPL/SSPL).
       # Report-only for now; flip the warning to a hard failure once the baseline is
       # reviewed. See Engineering/Architecture/license-and-legal-compliance.md.
-      - name: License scan (report + warn on copyleft)
+      - name: License scan (block on strong copyleft)
         run: |
-          npx --yes license-checker-rseidelsohn --production --summary | tee licenses.txt || true
+          npx --yes license-checker-rseidelsohn --production --summary | tee licenses.txt
           if grep -Eiq 'AGPL|(^|[^L])GPL-|SSPL' licenses.txt; then
-            echo "::warning::Strong-copyleft dependency detected — review per license-and-legal-compliance.md before flipping this to blocking."
-          else
-            echo "No strong-copyleft dependencies detected."
+            echo "::error::Strong-copyleft dependency detected — disallowed (see license-and-legal-compliance.md)."
+            exit 1
           fi
+          echo "No strong-copyleft dependencies detected."

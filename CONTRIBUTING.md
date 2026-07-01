@@ -34,3 +34,19 @@ To contribute code:
 - **Styling**: We use Tailwind CSS v4. Stick to the predefined pastel and dark mode theme tokens.
 
 Thank you for helping us build the best offline PDF toolkit!
+
+## Open-source boundary (please read)
+
+lumvale-pdf is a **standalone, fully open-source community tool** (Apache-2.0), developed in
+the open. It must stay free of any private or commercial code:
+
+- **No private/commercial dependencies or imports.** Do not depend on, or import from, private
+  Lumvale packages.
+- **No secrets or internal details.** Never commit credentials, internal infrastructure, or
+  non-public roadmap/customer information — in code, comments, commits, or issues. Every PR is
+  public.
+- **Dependency direction is one-way.** Commercial products (e.g. Lumvale Omnia) consume this
+  engine as a published package; they depend on us, never the reverse.
+
+CI enforces this on every PR (open-source boundary check, secret scan, LICENSE + dependency
+license checks). By contributing, you agree your contribution is licensed under Apache-2.0.
