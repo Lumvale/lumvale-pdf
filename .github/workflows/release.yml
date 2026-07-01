@@ -23,12 +23,23 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Build Core
-        run: npm run build
-        working-directory: ./core
+      # Build the dependency chain the desktop bundle needs: core -> browser -> ui.
+      # `npm run build --workspace=ui` emits both the web bundle (dist/) and the
+      # Electron main/preload (dist-electron/) that electron-builder packages.
+      - name: Build packages (core, browser, ui)
+        run: |
+          npm run build --workspace=core
+          npm run build --workspace=browser
+          npm run build --workspace=ui
 
+      # Builds unsigned installers and publishes them to the GitHub Release.
+      # Code signing is intentionally not configured (see RELEASING.md): unsigned
+      # installers build fine; signing only removes OS "unknown publisher" prompts.
+      # To sign later, provide the platform secrets (Windows: CSC_LINK/CSC_KEY_PASSWORD;
+      # macOS: CSC_LINK/CSC_KEY_PASSWORD + APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/APPLE_TEAM_ID)
+      # and electron-builder will pick them up automatically.
       - name: Build and Publish UI
         run: npx electron-builder -p always
         working-directory: ./ui

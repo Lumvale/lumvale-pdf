@@ -95,8 +95,8 @@ function App() {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="mx-auto mb-8 flex items-center justify-center"
         >
-          <img src="/Lumvale-pdf-light.svg" alt="LumvalePDF Logo" className="dark:hidden h-16" />
-          <img src="/Lumvale-pdf-dark.svg" alt="LumvalePDF Logo" className="hidden dark:block h-16" />
+          <img src={`${import.meta.env.BASE_URL}Lumvale-pdf-light.svg`} alt="LumvalePDF Logo" className="dark:hidden h-16" />
+          <img src={`${import.meta.env.BASE_URL}Lumvale-pdf-dark.svg`} alt="LumvalePDF Logo" className="hidden dark:block h-16" />
         </motion.div>
         
         <p className="text-lg text-lumvale-muted mb-8 max-w-xl mx-auto leading-relaxed">

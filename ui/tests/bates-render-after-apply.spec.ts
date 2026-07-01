@@ -31,7 +31,10 @@ async function pageHasContent(page: any, pageId: string): Promise<boolean> {
   }, pageId);
 }
 
-test('main viewer shows page numbers and keeps rendering after apply', async ({ page }) => {
+test('main viewer shows page numbers and keeps rendering after apply', async ({ page, browserName }) => {
+  // This test emulates a throttled CPU via the Chrome DevTools Protocol, which
+  // Playwright only exposes on Chromium.
+  test.skip(browserName !== 'chromium', 'CDP CPU throttling is Chromium-only');
   test.setTimeout(180000);
 
   const client = await page.context().newCDPSession(page);

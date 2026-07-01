@@ -12,3 +12,8 @@ ui/playwright-report/
 ui/build/
 # Local lib tarballs (build artifacts)
 *.tgz
+# Playwright MCP scratch output (agentic CV smoke runs)
+.playwright-mcp/
+# tesseract.js language data downloaded at OCR test runtime
+*.traineddata
+*.traineddata.gz

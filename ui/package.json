@@ -49,7 +49,10 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "test:ui": "playwright test --ui"
+    "test:e2e:electron": "playwright test -c playwright.electron.config.ts",
+    "test:ui": "playwright test --ui",
+    "dist": "npm run build && electron-builder",
+    "dist:store": "npm run build && electron-builder --win appx"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
@@ -109,15 +112,23 @@
     "vitest": "^4.1.9"
   },
   "build": {
-    "appId": "com.vaultos.lumvalepdf",
+    "appId": "com.lumvale.pdf",
     "productName": "LumvalePDF",
+    "electronVersion": "43.0.0",
     "directories": {
-      "output": "release/${version}"
+      "output": "release/${version}",
+      "buildResources": "build-assets"
     },
+    "files": [
+      "dist/**",
+      "dist-electron/**",
+      "package.json"
+    ],
     "win": {
       "target": [
         "nsis"
-      ]
+      ],
+      "icon": "build-assets/icon.png"
     },
     "mac": {
       "target": {
@@ -125,14 +136,24 @@
         "arch": [
           "universal"
         ]
-      }
+      },
+      "icon": "build-assets/icon.png"
     },
     "linux": {
       "target": [
         "AppImage",
         "deb"
       ],
-      "category": "Office"
+      "category": "Office",
+      "icon": "build-assets/icon.png"
+    },
+    "appx": {
+      "identityName": "REPLACEME.LumvalePDF",
+      "publisher": "CN=REPLACEME",
+      "publisherDisplayName": "Lumvale",
+      "applicationId": "LumvalePDF",
+      "backgroundColor": "#0b0f19",
+      "showNameOnTiles": true
     },
     "fileAssociations": [
       {
@@ -145,8 +166,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "vaultos",
-        "repo": "lumvalepdf"
+        "owner": "Lumvale",
+        "repo": "lumvale-pdf"
       }
     ]
   }

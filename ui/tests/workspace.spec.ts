@@ -13,6 +13,10 @@ test.describe('Workspace E2E', () => {
   });
 
   test('can upload a PDF, extract, and merge', async ({ page }) => {
+    // This is a dense end-to-end flow (extract, merge, compress, metadata,
+    // encrypt, delete). On slower engines the cumulative work exceeds the
+    // default 60s budget, so give it the same headroom as the other heavy flows.
+    test.setTimeout(120000);
     await page.goto('/');
 
     const demo1Path = path.join(__dirname, 'fixtures', 'demo1.pdf');

@@ -20,8 +20,8 @@ export default function AboutModal({ onClose }: AboutModalProps) {
         </div>
 
         <div className="px-6 pb-6 flex flex-col items-center text-center -mt-2">
-          <img src="/Lumvale-pdf-light.svg" alt="LumvalePDF" className="dark:hidden h-12 mb-3" />
-          <img src="/Lumvale-pdf-dark.svg" alt="LumvalePDF" className="hidden dark:block h-12 mb-3" />
+          <img src={`${import.meta.env.BASE_URL}Lumvale-pdf-light.svg`} alt="LumvalePDF" className="dark:hidden h-12 mb-3" />
+          <img src={`${import.meta.env.BASE_URL}Lumvale-pdf-dark.svg`} alt="LumvalePDF" className="hidden dark:block h-12 mb-3" />
 
           {VERSION && (
             <span className="text-xs font-mono text-lumvale-muted bg-lumvale-bg border border-lumvale-border rounded-full px-3 py-0.5 mb-4">

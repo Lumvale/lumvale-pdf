@@ -382,12 +382,19 @@ export class LumvalePDFEngine {
       const { r, g, b } = this.hexToRgb(ann.color);
       
       if (ann.type === 'ink') {
+        // Stroke each freehand path as connected line segments. (pdf-lib's
+        // drawSvgPath with only borderColor renders nothing in this version, so
+        // flattened ink used to disappear silently.) Coordinates arrive in
+        // top-left-origin screen space, so flip y into PDF's bottom-left origin.
         for (const pts of ann.paths) {
-          const d = pts.map((p: any, i: number) => `${i === 0 ? 'M' : 'L'} ${p.x} ${height - p.y}`).join(' ');
-          page.drawSvgPath(d, {
-            borderColor: rgb(r, g, b),
-            borderWidth: ann.strokeWidth,
-          });
+          for (let i = 1; i < pts.length; i++) {
+            page.drawLine({
+              start: { x: pts[i - 1].x, y: height - pts[i - 1].y },
+              end: { x: pts[i].x, y: height - pts[i].y },
+              thickness: ann.strokeWidth,
+              color: rgb(r, g, b),
+            });
+          }
         }
       } else if (ann.type === 'highlight') {
         for (const rect of ann.rects) {
@@ -456,10 +463,15 @@ export class LumvalePDFEngine {
     if (!page) return;
     const { height } = page.getSize();
     
-    // Ensure the page has an Annots array
-    let annots = page.node.lookup(PDFName.of('Annots'), PDFArray);
-    if (!annots) {
-      annots = this.pdfDoc.context.obj([]);
+    // Ensure the page has an Annots array. Note: lookup(key, PDFArray) THROWS
+    // when the key is missing (it type-checks undefined), so look it up untyped
+    // and create the array when it isn't already one.
+    const existingAnnots = page.node.lookup(PDFName.of('Annots'));
+    let annots: PDFArray;
+    if (existingAnnots instanceof PDFArray) {
+      annots = existingAnnots;
+    } else {
+      annots = this.pdfDoc.context.obj([]) as PDFArray;
       page.node.set(PDFName.of('Annots'), annots);
     }
 
