@@ -50,7 +50,9 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:electron": "playwright test -c playwright.electron.config.ts",
-    "test:ui": "playwright test --ui"
+    "test:ui": "playwright test --ui",
+    "dist": "npm run build && electron-builder",
+    "dist:store": "npm run build && electron-builder --win appx"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
@@ -144,6 +146,14 @@
       ],
       "category": "Office",
       "icon": "build-assets/icon.png"
+    },
+    "appx": {
+      "identityName": "REPLACEME.LumvalePDF",
+      "publisher": "CN=REPLACEME",
+      "publisherDisplayName": "Lumvale",
+      "applicationId": "LumvalePDF",
+      "backgroundColor": "#0b0f19",
+      "showNameOnTiles": true
     },
     "fileAssociations": [
       {

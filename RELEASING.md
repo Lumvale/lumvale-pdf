@@ -92,16 +92,32 @@ these secrets and electron-builder picks them up automatically — no config cha
 ### Microsoft Store path (no cert needed)
 
 To distribute on the **Microsoft Store**, you don't need to buy a code-signing
-certificate — the Store signs the package for you. Steps:
+certificate — the Store signs the package for you. The `appx`/MSIX target is
+already scaffolded in `ui/package.json` `build.appx` with **placeholder identity
+values**, and is built via a dedicated script (it's intentionally *not* in the
+default `win.target`, so normal `nsis` releases are unaffected):
 
-1. Register the app in **Partner Center** and reserve its name/identity.
-2. Add an **`appx`/MSIX** target to the `win` build with the reserved
-   `identityName`, `publisher`, and `publisherDisplayName` from Partner Center.
-3. Build the `.appx`/`.msix` and submit it through Partner Center.
+```bash
+# from ui/
+npm run dist:store   # = npm run build && electron-builder --win appx
+```
 
-Until the Partner Center identity is reserved, the `win` target stays on `nsis`
-(direct download) only — don't add a half-configured `appx` target, it will fail
-the Windows build.
+Before a real submission:
+
+1. Register the app in **Partner Center** and reserve its name to get the
+   **identity name** and **publisher ID**.
+2. In `ui/package.json` `build.appx`, replace the placeholders:
+   - `identityName`: `REPLACEME.LumvalePDF` → the reserved identity name.
+   - `publisher`: `CN=REPLACEME` → the exact publisher ID (`CN=...`) from Partner
+     Center. It **must** match or the Store rejects the upload.
+   - `applicationId` / `publisherDisplayName` are already set (`LumvalePDF` /
+     `Lumvale`).
+3. `npm run dist:store` produces `ui/release/<version>/LumvalePDF <version>.appx`.
+   electron-builder builds it **unsigned** ("Windows Store only build") — that's
+   correct; upload it through Partner Center, which signs it.
+
+Note: `identityName` accepts only alphanumeric, period, and dash characters (no
+underscores).
 
 ## Future: automate with Changesets
 
