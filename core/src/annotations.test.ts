@@ -28,6 +28,9 @@ function highlightAt(): any {
 function rectangleAt(): any {
   return { type: 'rectangle', color: '#0000FF', strokeWidth: 2, rects: [{ x: 100, y: 100, width: 150, height: 80 }] };
 }
+function circleAt(): any {
+  return { type: 'circle', color: '#4CD964', strokeWidth: 2, rects: [{ x: 120, y: 120, width: 120, height: 120 }] };
+}
 function textAt(): any {
   return { type: 'text', color: '#000000', x: 120, y: 120, fontSize: 18, text: 'STAMP' };
 }
@@ -46,6 +49,7 @@ describe('LumvalePDFEngine — annotation persistence', () => {
     ['ink', inkAt()],
     ['highlight', highlightAt()],
     ['rectangle', rectangleAt()],
+    ['circle', circleAt()],
     ['text', textAt()],
   ] as const;
 

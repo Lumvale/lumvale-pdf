@@ -24,7 +24,7 @@ import type { ExportImageRequest } from './ExportImageModal';
 import AboutModal from './AboutModal';
 import { exportPagesToImages } from '../utils/exportImages';
 import AnnotationToolbar from './AnnotationToolbar';
-import type { Annotation, AnnotationType } from './AnnotationOverlay';
+import type { Annotation, AnnotationType, ImageAnnotation } from './AnnotationOverlay';
 import { useDocumentEngine } from '../engine';
 import { useIsSmallScreen } from '../hooks/useIsSmallScreen';
 
@@ -469,6 +469,33 @@ export default function Workspace({
 
   const handleExport = () => setShowExportModal(true);
 
+  /** Insert a picked image as a resizable image annotation on the current page. */
+  const handleAddImage = (dataUrl: string) => {
+    const img = new Image();
+    img.onload = () => {
+      // Scale to at most 40% of the page width, preserving aspect ratio, and
+      // centre it. Coordinates are in top-left-origin PDF-point space (the same
+      // space other annotations store), matching the engine's flatten/native flip.
+      const maxW = pageBaseSize.w * 0.4;
+      const scale = Math.min(1, maxW / (img.naturalWidth || maxW));
+      const width = (img.naturalWidth || 200) * scale;
+      const height = (img.naturalHeight || 150) * scale;
+      const annotation: ImageAnnotation = {
+        id: crypto.randomUUID(),
+        type: 'image',
+        color: '#000000',
+        pageIndex: currentPage - 1,
+        dataUrl,
+        x: (pageBaseSize.w - width) / 2,
+        y: (pageBaseSize.h - height) / 2,
+        width,
+        height,
+      };
+      setAnnotations((prev) => [...prev, annotation]);
+    };
+    img.src = dataUrl;
+  };
+
   /** Derive a safe file-name stem from the document name for exported images.
    *  Drops any directory components and extension, then neutralises characters
    *  that could produce odd paths inside the export zip. */
@@ -904,6 +931,7 @@ export default function Workspace({
           hasPendingAnnotations={annotations.length > 0}
           onClearAnnotations={() => setAnnotations([])}
           onClose={() => setAnnotateMode(false)}
+          onAddImage={handleAddImage}
         />
       )}
 

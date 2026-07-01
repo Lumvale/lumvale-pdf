@@ -418,6 +418,19 @@ export class LumvalePDFEngine {
             borderWidth: ann.strokeWidth || 2,
           });
         }
+      } else if (ann.type === 'circle') {
+        for (const rect of ann.rects) {
+          // Ellipse inscribed in the drawn box. Coordinates arrive top-left
+          // origin; flip the centre into PDF's bottom-left origin.
+          page.drawEllipse({
+            x: rect.x + rect.width / 2,
+            y: height - (rect.y + rect.height / 2),
+            xScale: Math.abs(rect.width / 2),
+            yScale: Math.abs(rect.height / 2),
+            borderColor: rgb(r, g, b),
+            borderWidth: ann.strokeWidth || 2,
+          });
+        }
       } else if (ann.type === 'text') {
         page.drawText(ann.text, {
           x: ann.x,
@@ -550,9 +563,40 @@ export class LumvalePDFEngine {
             BS: this.pdfDoc.context.obj({ W: ann.strokeWidth || 2 }),
             F: 4,
           });
-          
+
           annots.push(this.pdfDoc.context.register(annotDict));
         }
+      } else if (ann.type === 'circle') {
+        for (const rbox of ann.rects) {
+          const rx = rbox.x;
+          const ry = height - rbox.y - rbox.height;
+          const rect = this.pdfDoc.context.obj([rx, ry, rx + rbox.width, ry + rbox.height]);
+
+          const annotDict = this.pdfDoc.context.obj({
+            Type: 'Annot',
+            Subtype: 'Circle',
+            Rect: rect,
+            C: colorArr,
+            BS: this.pdfDoc.context.obj({ W: ann.strokeWidth || 2 }),
+            F: 4,
+          });
+
+          annots.push(this.pdfDoc.context.register(annotDict));
+        }
+      } else if (ann.type === 'image') {
+        // Images have no simple editable-annotation form (they'd need a Stamp
+        // annotation with an image appearance stream), so bake them into the
+        // page even in "native" mode — the practical, viewer-portable behaviour.
+        const imageBytes = Uint8Array.from(atob(ann.dataUrl.split(',')[1]), (c) => c.charCodeAt(0));
+        const pdfImage = ann.dataUrl.startsWith('data:image/png')
+          ? await this.pdfDoc.embedPng(imageBytes)
+          : await this.pdfDoc.embedJpg(imageBytes);
+        page.drawImage(pdfImage, {
+          x: ann.x,
+          y: height - ann.y - ann.height,
+          width: ann.width,
+          height: ann.height,
+        });
       } else if (ann.type === 'text') {
         const ry = height - ann.y - ann.fontSize;
         const rect = this.pdfDoc.context.obj([ann.x, ry, ann.x + 200, ry + ann.fontSize + 10]);

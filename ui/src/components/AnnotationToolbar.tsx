@@ -1,6 +1,7 @@
+import { useRef } from 'react';
 import { motion } from 'framer-motion';
 import type { AnnotationType } from './AnnotationOverlay';
-import { PenTool, Highlighter, Type, Trash2, X, MousePointer2, Square } from 'lucide-react';
+import { PenTool, Highlighter, Type, Trash2, X, MousePointer2, Square, RectangleHorizontal, Circle, ImagePlus } from 'lucide-react';
 
 interface AnnotationToolbarProps {
   activeTool: AnnotationType | null;
@@ -12,6 +13,7 @@ interface AnnotationToolbarProps {
   onClearAnnotations: () => void;
   onClose: () => void;
   hasPendingAnnotations: boolean;
+  onAddImage: (dataUrl: string) => void;
   customEditTools?: React.ReactNode;
 }
 
@@ -36,8 +38,22 @@ export default function AnnotationToolbar({
   onClearAnnotations,
   onClose,
   hasPendingAnnotations,
+  onAddImage,
   customEditTools,
 }: AnnotationToolbarProps) {
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') onAddImage(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <motion.div 
       initial={{ y: -20, opacity: 0 }}
@@ -76,6 +92,34 @@ export default function AnnotationToolbar({
           >
             <Square size={18} fill={activeTool === 'redact' ? 'currentColor' : 'none'} />
           </button>
+          <button
+            onClick={() => onToolSelect(activeTool === 'rectangle' ? null : 'rectangle')}
+            className={`p-2 rounded-md transition-colors flex items-center justify-center ${activeTool === 'rectangle' ? 'bg-[var(--color-lumvale-primary)] text-[var(--color-lumvale-bg)]' : 'text-[var(--color-lumvale-muted)] hover:text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-border)]'}`}
+            title="Rectangle Tool"
+          >
+            <RectangleHorizontal size={18} />
+          </button>
+          <button
+            onClick={() => onToolSelect(activeTool === 'circle' ? null : 'circle')}
+            className={`p-2 rounded-md transition-colors flex items-center justify-center ${activeTool === 'circle' ? 'bg-[var(--color-lumvale-primary)] text-[var(--color-lumvale-bg)]' : 'text-[var(--color-lumvale-muted)] hover:text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-border)]'}`}
+            title="Circle Tool"
+          >
+            <Circle size={18} />
+          </button>
+          <button
+            onClick={() => imageInputRef.current?.click()}
+            className="p-2 rounded-md transition-colors flex items-center justify-center text-[var(--color-lumvale-muted)] hover:text-[var(--color-lumvale-text)] hover:bg-[var(--color-lumvale-border)]"
+            title="Insert Image"
+          >
+            <ImagePlus size={18} />
+          </button>
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/png,image/jpeg"
+            onChange={handleImageFile}
+            className="hidden"
+          />
           {customEditTools}
         </div>
 
