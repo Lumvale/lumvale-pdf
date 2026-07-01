@@ -466,9 +466,12 @@ export class LumvalePDFEngine {
     // Ensure the page has an Annots array. Note: lookup(key, PDFArray) THROWS
     // when the key is missing (it type-checks undefined), so look it up untyped
     // and create the array when it isn't already one.
-    let annots = page.node.lookup(PDFName.of('Annots'));
-    if (!(annots instanceof PDFArray)) {
-      annots = this.pdfDoc.context.obj([]);
+    const existingAnnots = page.node.lookup(PDFName.of('Annots'));
+    let annots: PDFArray;
+    if (existingAnnots instanceof PDFArray) {
+      annots = existingAnnots;
+    } else {
+      annots = this.pdfDoc.context.obj([]) as PDFArray;
       page.node.set(PDFName.of('Annots'), annots);
     }
 
