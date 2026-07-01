@@ -594,8 +594,25 @@ export default function Workspace({
     }
   };
 
-  const handleCheckUpdates = () => {
-    alert('You are up to date!');
+  const handleCheckUpdates = async () => {
+    const api = (window as any).electronAPI;
+    if (api?.checkForUpdates) {
+      // Desktop app: ask the main process to hit the update feed.
+      try {
+        const updateAvailable = await api.checkForUpdates();
+        alert(
+          updateAvailable
+            ? 'An update is available. It will download and install on restart.'
+            : 'You are up to date!'
+        );
+      } catch {
+        alert('Could not check for updates right now. Please try again later.');
+      }
+    } else {
+      // Web / PWA: there is no in-app updater; the service worker refreshes the
+      // app automatically in the background.
+      alert('You are on the latest web version. LumvalePDF updates automatically.');
+    }
   };
 
   const handleToggleSelect = (page: number) => {

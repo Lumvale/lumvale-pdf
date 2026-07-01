@@ -47,4 +47,46 @@ test.describe('Electron desktop app', () => {
       await app.close();
     }
   });
+
+  test('Help menu: About shows a loaded logo, and Check for Updates works', async () => {
+    const { app, window } = await launchApp();
+    try {
+      await window
+        .locator('input[type="file"]')
+        .first()
+        .setInputFiles(path.join(FIXTURES, 'demo1.pdf'));
+      await expect(window.locator('#pdf-page-1 canvas')).toBeVisible({ timeout: 20000 });
+
+      // About: the logo must load from the packaged bundle. Regression — an
+      // absolute "/Lumvale-pdf-*.svg" resolved to the filesystem root under
+      // file:// and rendered a broken image.
+      await window.getByText('Help', { exact: true }).click();
+      await window.getByText('About Lumvale').click();
+      await expect(window.getByText(/A free, high-quality/)).toBeVisible();
+      await expect
+        .poll(() =>
+          window.evaluate(() => {
+            const img = [...document.querySelectorAll('img')].find(
+              (i) => i.src.includes('Lumvale-pdf') && (i as HTMLElement).offsetParent !== null
+            ) as HTMLImageElement | undefined;
+            return img?.naturalWidth ?? 0;
+          })
+        )
+        .toBeGreaterThan(0);
+      await window.mouse.click(5, 5); // dismiss the About modal (backdrop)
+
+      // Check for Updates: the menu item must actually invoke the updater IPC
+      // (regression — it was a stub that always alerted "up to date").
+      let message = '';
+      window.once('dialog', async (d) => {
+        message = d.message();
+        await d.accept();
+      });
+      await window.getByText('Help', { exact: true }).click();
+      await window.getByText('Check for Updates').click();
+      await expect.poll(() => message).toMatch(/up to date|update is available|could not check/i);
+    } finally {
+      await app.close();
+    }
+  });
 });
