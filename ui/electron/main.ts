@@ -17,16 +17,19 @@ const __dirname = path.dirname(__filename);
 
 let mainWindow: BrowserWindow | null = null;
 
+// The Window Controls Overlay (titleBarOverlay / setTitleBarOverlay) is a
+// Windows + Linux feature; on macOS the setter throws ("@platform win32,linux").
+const SUPPORTS_TITLE_BAR_OVERLAY = process.platform !== 'darwin';
+
 const createWindow = () => {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     title: 'LumvalePDF',
     titleBarStyle: 'hidden',
-    titleBarOverlay: {
-      color: '#0b0f19',
-      symbolColor: '#f8fafc',
-    },
+    ...(SUPPORTS_TITLE_BAR_OVERLAY
+      ? { titleBarOverlay: { color: '#0b0f19', symbolColor: '#f8fafc' } }
+      : {}),
     autoHideMenuBar: true,
     icon: path.join(__dirname, '../public/pwa-512x512.png'),
     webPreferences: {
@@ -72,12 +75,17 @@ app.whenReady().then(() => {
   });
 
   ipcMain.on('app:setTheme', (event, theme) => {
-    if (mainWindow) {
-      if (theme === 'dark') {
-        mainWindow.setTitleBarOverlay({ color: '#0b0f19', symbolColor: '#f8fafc' });
-      } else {
-        mainWindow.setTitleBarOverlay({ color: '#FBFAF6', symbolColor: '#15110B' });
-      }
+    // macOS has no Window Controls Overlay: calling setTitleBarOverlay there
+    // throws in the main process. The renderer fires this on first paint (via
+    // initializeTheme), so the unguarded call wedged the whole app on macOS —
+    // the window loaded but React never rendered and app.close() then hung.
+    if (!mainWindow || !SUPPORTS_TITLE_BAR_OVERLAY) {
+      return;
+    }
+    if (theme === 'dark') {
+      mainWindow.setTitleBarOverlay({ color: '#0b0f19', symbolColor: '#f8fafc' });
+    } else {
+      mainWindow.setTitleBarOverlay({ color: '#FBFAF6', symbolColor: '#15110B' });
     }
   });
 

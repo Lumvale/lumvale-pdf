@@ -29,9 +29,18 @@ export async function launchApp(): Promise<{ app: ElectronApplication; window: P
       E2E_TEST: '1',
     },
   });
+  // Surface main-process stderr so an Electron crash (e.g. an unsupported native
+  // API throwing) shows up in the CI log instead of only as an opaque timeout.
+  app.process().stderr?.on('data', (d) => process.stderr.write(`[electron main] ${d}`));
+
   // macOS CI runners are slow to show the first window and load file:// content,
   // so use generous timeouts rather than the 30s defaults.
   const window = await app.firstWindow({ timeout: 60_000 });
+  // Forward renderer console errors + uncaught page errors for the same reason.
+  window.on('console', (m) => {
+    if (m.type() === 'error') console.error(`[renderer console] ${m.text()}`);
+  });
+  window.on('pageerror', (e) => console.error(`[renderer pageerror] ${e.message}`));
   // Wait on the renderer's own readyState rather than only the load-state event.
   // When the main process is briefly busy at startup the `domcontentloaded`
   // lifecycle event can be delivered before Playwright attaches and then be
