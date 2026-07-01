@@ -87,6 +87,11 @@ jobs:
           npm run build --workspace=core
           npm run build --workspace=browser
           npm run build --workspace=ui
+      # global-setup.ts launches Playwright Chromium to generate PDF fixtures, and
+      # on Linux this also pulls the shared libraries Electron itself needs.
+      - name: Install Playwright Chromium + system deps
+        run: npx playwright install --with-deps chromium
+        working-directory: ./ui
       # Electron needs a display on Linux; wrap the run in a virtual framebuffer.
       - name: Electron e2e (Linux)
         if: runner.os == 'Linux'

@@ -2,6 +2,10 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
+  // Electron specs launch their own app via playwright.electron.config.ts — never
+  // run them under the web browser projects (they can't launch in the headless
+  // web CI container and would run redundantly).
+  testIgnore: ['**/electron/**'],
   globalSetup: './tests/global-setup.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
