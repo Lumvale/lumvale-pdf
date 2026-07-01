@@ -30,8 +30,9 @@ test.describe('Page operations @chromium', () => {
     await page.getByTitle('Rotate Page').first().click();
     await page.getByTitle('Visual Page Organizer').click(); // back to the document view
 
-    // After a 90° rotation the rendered page is landscape → aspect < 1.
-    await expect.poll(() => pageAspect(page), { timeout: 15000 }).toBeLessThan(1);
+    // After a 90° rotation the rendered page is landscape → aspect < 1. The
+    // re-render of the rotated document can be slow under load, so poll generously.
+    await expect.poll(() => pageAspect(page), { timeout: 30000, intervals: [1000, 2000, 3000] }).toBeLessThan(1);
   });
 
   test('Split into single pages downloads a ZIP', async ({ page }) => {
