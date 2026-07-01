@@ -23,9 +23,9 @@ jobs:
           node-version: 20
       - name: No private/commercial Lumvale deps or imports
         run: node .github/scripts/check-oss-boundary.mjs
-      - name: Root LICENSE present (warning until a license is chosen — story P2)
+      - name: Root LICENSE present
         run: |
-          test -f LICENSE || echo "::warning::No root LICENSE yet. An OSS repo needs one (see conformance story P2). Flip this step to blocking once the license is chosen."
+          test -f LICENSE || { echo "::error::A root LICENSE file is required for this OSS repo"; exit 1; }
 
   secrets:
     name: Secret scan
@@ -40,3 +40,24 @@ jobs:
           curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${VER}/gitleaks_${VER}_linux_x64.tar.gz" -o gl.tgz
           tar -xzf gl.tgz gitleaks
           ./gitleaks detect --no-git --config .gitleaks.toml --redact --exit-code 1 --source .
+
+  licenses:
+    name: Dependency licenses
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      # Reports all dependency licenses and warns on strong copyleft (GPL/AGPL/SSPL).
+      # Report-only for now; flip the warning to a hard failure once the baseline is
+      # reviewed. See Engineering/Architecture/license-and-legal-compliance.md.
+      - name: License scan (report + warn on copyleft)
+        run: |
+          npx --yes license-checker-rseidelsohn --production --summary | tee licenses.txt || true
+          if grep -Eiq 'AGPL|(^|[^L])GPL-|SSPL' licenses.txt; then
+            echo "::warning::Strong-copyleft dependency detected — review per license-and-legal-compliance.md before flipping this to blocking."
+          else
+            echo "No strong-copyleft dependencies detected."
+          fi
