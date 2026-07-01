@@ -1,0 +1,19 @@
+# gitleaks config for the OSS lumvale-pdf repo.
+# Uses the default ruleset, plus an allowlist for build artifacts and vendored
+# bundles that are not source and produce false positives.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ignore build artifacts and binaries"
+paths = [
+  '''.*\.tgz$''',
+  '''.*\.db$''',
+  '''(^|/)dist/.*''',
+  '''(^|/)dist-electron/.*''',
+  '''(^|/)out/.*''',
+  '''(^|/)coverage/.*''',
+  '''(^|/)test-results/.*''',
+  '''(^|/)playwright-report/.*''',
+  '''package-lock\.json$''',
+]
