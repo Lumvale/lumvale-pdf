@@ -32,6 +32,21 @@ export async function saveAs(page: Page, mode: SaveMode): Promise<string> {
   return p!;
 }
 
+/**
+ * File → Save As when there are NO pending annotations: the dialog shows a
+ * single "Save Document" button instead of the Flatten/Native choice.
+ */
+export async function saveAsPlain(page: Page): Promise<string> {
+  await page.getByText('File', { exact: true }).click();
+  await page.getByText('Save As...').click();
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save Document', exact: true }).click();
+  const download = await downloadPromise;
+  const p = await download.path();
+  expect(p, 'save produced a downloadable file').toBeTruthy();
+  return p!;
+}
+
 /** Open a file (path) from the landing screen and wait for it to render. */
 export async function openFile(page: Page, filePath: string) {
   await page.goto('/');
