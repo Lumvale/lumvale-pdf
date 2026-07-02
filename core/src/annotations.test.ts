@@ -80,4 +80,19 @@ describe('LumvalePDFEngine — annotation persistence', () => {
     // here and silently dropped the annotation.
     await expect(saveWithAnnotation('native', inkAt())).resolves.toBeInstanceOf(Uint8Array);
   });
+
+  it('extractPages preserves document metadata (Save As stripped it)', async () => {
+    // copyPages copies page content but not the Info dictionary — every Save As
+    // (which routes through extractPages) silently dropped title/author/etc.
+    const srcDoc = await PDFDocument.create();
+    srcDoc.addPage([595, 842]);
+    srcDoc.setTitle('Kept Title');
+    srcDoc.setAuthor('Kept Author');
+    const engine = new LumvalePDFEngine();
+    await engine.loadDocument(await srcDoc.save());
+    const out = await (await engine.extractPages([0])).save();
+    const reparsed = await PDFDocument.load(out);
+    expect(reparsed.getTitle()).toBe('Kept Title');
+    expect(reparsed.getAuthor()).toBe('Kept Author');
+  });
 });
