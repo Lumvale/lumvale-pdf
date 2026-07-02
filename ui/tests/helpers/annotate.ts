@@ -46,13 +46,20 @@ export async function dragOnPage(
   await page.mouse.up();
 }
 
-/** Place a text annotation: click to drop the caret, type, and commit with Enter. */
+/**
+ * Place a text annotation: click to drop the input, fill it, and commit via the
+ * "Save Text" button (deterministic — no reliance on focus for keystrokes).
+ */
 export async function placeText(page: Page, text: string, opts: { xPct?: number; y?: number } = {}) {
   const box = await page.getByTestId('annotation-svg').boundingBox();
   if (!box) throw new Error('annotation overlay not found');
   await page.mouse.click(box.x + box.width * (opts.xPct ?? 0.3), box.y + (opts.y ?? 140));
-  await page.keyboard.type(text);
-  await page.keyboard.press('Enter');
+  const input = page.locator('input[type="text"]').last();
+  await expect(input).toBeVisible();
+  await input.fill(text);
+  // Commit with Enter on the input — the overlay SVG stretches over the inline
+  // "Save Text" button and intercepts pointer events, so clicking it hangs.
+  await input.press('Enter');
 }
 
 /** Count pixels in the page canvas matching a coarse colour predicate. */

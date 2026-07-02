@@ -27,6 +27,8 @@ import AnnotationToolbar from './AnnotationToolbar';
 import type { Annotation, AnnotationType, ImageAnnotation } from './AnnotationOverlay';
 import { useDocumentEngine } from '../engine';
 import { useIsSmallScreen } from '../hooks/useIsSmallScreen';
+import { usePWAInstall } from '../hooks/usePWAInstall';
+import PWAInstallModal from './PWAInstallModal';
 
 const MAIN_VIEWER_WINDOW = 6;
 
@@ -188,6 +190,10 @@ export default function Workspace({
   const [showAbout, setShowAbout] = useState(false);
   const [showBatesModal, setShowBatesModal] = useState(false);
   const [showHeaderFooterModal, setShowHeaderFooterModal] = useState(false);
+  // PWA install: browser-only (Electron users already have the app installed).
+  const { canInstall: pwaCanInstall, isIOSManualInstall, triggerInstall } = usePWAInstall();
+  const canInstall = pwaCanInstall && !(window as { electronAPI?: unknown }).electronAPI;
+  const [showInstallModal, setShowInstallModal] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const openFileInputRef = useRef<HTMLInputElement>(null);
@@ -864,8 +870,9 @@ export default function Workspace({
         }
         hideToolsMenu={hideToolsMenu}
         customTopBarRight={customTopBarRight}
+        onShowInstall={canInstall ? () => setShowInstallModal(true) : undefined}
       />
-      
+
       {customTabBar}
 
       <Toolbar
@@ -986,6 +993,16 @@ export default function Workspace({
       )}
 
       {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
+
+      <PWAInstallModal
+        isOpen={showInstallModal}
+        onClose={() => setShowInstallModal(false)}
+        onInstall={async () => {
+          await triggerInstall();
+          setShowInstallModal(false);
+        }}
+        isIOSManualInstall={isIOSManualInstall}
+      />
       
       <div className="flex-1 flex overflow-hidden relative z-10 min-h-0">
         {!documentBytes ? (

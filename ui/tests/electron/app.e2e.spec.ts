@@ -89,4 +89,17 @@ test.describe('Electron desktop app', () => {
       await app.close();
     }
   });
+
+  test('file association: a .pdf passed in argv opens on launch', async () => {
+    // Simulates double-clicking a PDF (the OS launches the app with the file
+    // path in argv). The document must open without any manual upload.
+    const { app, window } = await launchApp({ openFile: path.join(FIXTURES, 'demo1.pdf') });
+    try {
+      await expect(window.locator('#pdf-page-1 canvas')).toBeVisible({ timeout: 30000 });
+      // The landing uploader must be gone — we're in the workspace.
+      await expect(window.getByText('Drag & Drop your files here')).toHaveCount(0);
+    } finally {
+      await app.close();
+    }
+  });
 });

@@ -1,16 +1,14 @@
-# Agentic computer-vision smoke (non-CI)
+# Agentic computer-vision release smoke (non-CI)
 
-This is a **manual, agent-driven** visual smoke of the running app. It is
-deliberately **not** part of the deterministic CI gate — it uses an LLM agent
-(Claude Code) driving the browser through the **Playwright MCP**
-(`plugin:playwright:playwright`, tools named `browser_*`) to look at each screen
-and judge whether it renders correctly. That judgement is powerful (it catches
-"looks broken" issues no assertion encodes) but slow and non-deterministic, so it
-complements — never replaces — the automated `visual.spec.ts` / `ocr-render.spec.ts`
-layers.
+A **manual, agent-driven** visual pass over the running app: an LLM agent (Claude
+Code) drives the browser through the **Playwright MCP** (`browser_*` tools),
+screenshots each surface, and *judges* whether it looks and behaves right. It
+catches "looks broken" issues no assertion encodes, but is slow and
+non-deterministic — so it complements, never replaces, the automated
+`visual.spec.ts` / `ocr-render.spec.ts` / e2e layers.
 
-Use it before a release, or when a change touches rendering/layout in a way the
-pixel baselines can't fully vouch for.
+**When to run:** once per release (before tagging / Store submission), and after
+any change that touches rendering or layout broadly.
 
 ## Prerequisites
 
@@ -20,34 +18,72 @@ npm run build
 npm run preview   # serves http://localhost:4173
 ```
 
-The Playwright MCP must be connected (it is, in this workspace). The agent should
-already have the fixtures from `tests/global-setup.ts`; if running standalone,
-any small PDF works.
+Fixtures come from `tests/global-setup.ts` (run any Playwright spec once to
+generate them), or use any small PDF.
 
-## Flow (agent runs these MCP tools in order)
+## Release checklist — the agent walks every row
 
-For each step: perform the action, then `browser_take_screenshot`, then **look at
-the screenshot and confirm the described expectation**. Stop and report if any
-screen is blank, misaligned, or missing content.
+For each row: perform the action, `browser_take_screenshot`, **look at the image
+and confirm the expectation**. Tick the box. Stop and file an issue for anything
+blank, misaligned, unreadable, or missing.
 
-| # | Action (MCP tool) | Visually verify |
-|---|---|---|
-| 1 | `browser_navigate` → `http://localhost:4173/` | Landing page: "Drag & Drop your files here", clean toolbar, aurora backdrop. |
-| 2 | `browser_snapshot` | Accessibility tree lists the uploader + "browse files"; no error boundary text. |
-| 3 | Upload a PDF (`browser_file_upload` after clicking "browse files") | Workspace appears: left sidebar with page thumbnails, main canvas shows page 1 rendered (not blank/grey). |
-| 4 | Click "Toggle Edit Mode", then "Page Numbering"; set prefix + start; Apply | Modal opens and closes; the Bates stamp (e.g. `CASE-000100`) is visible in the page footer. |
-| 5 | Click "Annotate Document" → "Pen Tool"; drag on the page | An ink stroke is drawn on the overlay in the tool colour. |
-| 6 | Click "Toggle Theme" | The whole UI flips light/dark cleanly — no unstyled flashes, no unreadable contrast. |
-| 7 | Resize to a phone width (`browser_resize` ~390px) | Sidebar collapses; the Dual/Ruler/Grid viewer aids disappear (small-screen layout). |
-| 8 | `browser_close` | — |
+### 1. Landing & import
+- [ ] Landing page: logo, "Drag & Drop your files here", feature cards, theme orb.
+- [ ] Toggle theme on the landing page — clean flip, readable in both modes.
+- [ ] Upload a PDF → workspace opens, page 1 rendered (not blank/grey).
+- [ ] Upload a `.docx` → converts and renders as PDF.
+- [ ] Upload a `.md` → converts and renders as PDF.
+- [ ] Recent files row shows previously opened documents.
 
-## Relationship to the automated layers
+### 2. Viewer & navigation
+- [ ] Sidebar thumbnails render; clicking one navigates; active state tracks scroll.
+- [ ] Bookmarks tab lists the outline (use `demo-bookmarked.pdf`); click navigates.
+- [ ] Zoom in / out / reset / Fit Width all visibly change the page size.
+- [ ] Dual-page, Ruler, Grid toggles each overlay correctly (desktop width only).
 
-- **`visual.spec.ts`** pins pixel baselines for the landing (light/dark),
-  workspace, and mobile — regression-catching but blind to "is this the right
-  thing?".
-- **`ocr-render.spec.ts`** proves stamped text (Bates, headers) actually
-  rasterizes legibly.
-- **This flow** is the human-eye backstop: an agent confirming the app *looks and
-  behaves* right across the core journey. Findings here should, where possible, be
-  turned into a new assertion in one of the automated specs.
+### 3. Annotations (all 7 tools — enter Edit Mode → Annotate)
+- [ ] Pen: draw a stroke — smooth, correct colour.
+- [ ] Highlighter: drag a box — translucent overlay.
+- [ ] Text: click, type, Enter — text appears at the click point.
+- [ ] Redact: drag — solid black box.
+- [ ] Rectangle: drag — outlined box.
+- [ ] Circle: drag — outlined ellipse.
+- [ ] Insert Image: pick a PNG — appears centred, resizable.
+- [ ] Select/move/resize an annotation; Delete removes it; Esc cancels a tool.
+- [ ] Colour swatch + stroke-width slider visibly change new annotations.
+
+### 4. Page & document operations (Edit Mode)
+- [ ] Extract Pages: select → download.
+- [ ] Split: single pages → ZIP download.
+- [ ] Merge: add a second PDF → combined page count.
+- [ ] Organizer: rotate a page (turns landscape), delete a page, drag to reorder.
+- [ ] Compress: completes with success message; document still renders.
+- [ ] Metadata: edit author → reopen dialog shows it.
+- [ ] Page Numbering: stamp appears in the footer (e.g. `CASE-000100`).
+- [ ] Headers & Footers: header text renders top-right.
+- [ ] Watermark: rotated stamp appears across the page.
+- [ ] Encrypt: downloads `*-protected.pdf`; reopening it shows a graceful error.
+
+### 5. Save & export
+- [ ] Save As → Flatten: reopened file shows annotations baked in.
+- [ ] Save As → Native: reopened file still shows the annotations.
+- [ ] Export to Image: PNG downloads and opens.
+
+### 6. Chrome, shortcuts, responsive
+- [ ] Help → About: modal opens, logo loads, version shown.
+- [ ] Help → Check for Updates: sensible message (no false "up to date" stub).
+- [ ] Ctrl+O opens the picker; Ctrl+S saves; Esc closes modals; Ctrl+/-/0 zooms.
+- [ ] `browser_resize` to ~390px: sidebar collapses, viewer aids + desktop tools
+      hidden, annotate/zoom/File menu still available (limited-edit contract).
+- [ ] Install App button appears after `beforeinstallprompt` (Chromium) and the
+      install modal opens.
+
+### 7. Desktop app (run separately via the Electron e2e or manually)
+- [ ] App launches; title bar overlay matches the theme.
+- [ ] Double-clicking a `.pdf` (file association) opens it directly.
+- [ ] Help → About and Check for Updates work in the packaged app.
+
+## Findings protocol
+
+Anything that fails here should, where possible, be turned into a deterministic
+assertion in the automated specs — this checklist is the net, not the archive.

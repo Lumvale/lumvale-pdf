@@ -10,14 +10,23 @@ const UI_ROOT = path.resolve(__dirname, '..', '..');
  * Launch the built desktop app (electron main = dist-electron/main.js, loading
  * dist/index.html). Requires `npm run build` first so both exist.
  */
-export async function launchApp(): Promise<{ app: ElectronApplication; window: Page }> {
+export async function launchApp(
+  opts: { openFile?: string } = {}
+): Promise<{ app: ElectronApplication; window: Page }> {
   const app = await electron.launch({
     cwd: UI_ROOT,
     // `--disable-gpu` forces software rendering: GitHub's headless macOS runners
     // have no usable GPU, and Chromium's compositor can otherwise stall so the
     // first window never reaches `domcontentloaded`. `--no-sandbox` avoids the
     // sandbox-helper handshake that also flakes on CI runners.
-    args: ['.', '--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage'],
+    // `opts.openFile` simulates the OS file-association launch (a .pdf in argv).
+    args: [
+      '.',
+      '--disable-gpu',
+      '--no-sandbox',
+      '--disable-dev-shm-usage',
+      ...(opts.openFile ? [opts.openFile] : []),
+    ],
     env: {
       ...process.env,
       // Ensure the main process takes the production branch (loadFile

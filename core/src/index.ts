@@ -653,6 +653,26 @@ export class LumvalePDFEngine {
     const newDoc = await PDFDocument.create();
     const copiedPages = await newDoc.copyPages(this.pdfDoc, pageIndices);
     copiedPages.forEach((page) => newDoc.addPage(page));
+    // copyPages copies page content but NOT the document Info dictionary, so
+    // without this every Save As silently stripped title/author/etc. — including
+    // metadata the user had just edited (Save routes through extractPages).
+    const src = this.pdfDoc;
+    const title = src.getTitle();
+    if (title !== undefined) newDoc.setTitle(title);
+    const author = src.getAuthor();
+    if (author !== undefined) newDoc.setAuthor(author);
+    const subject = src.getSubject();
+    if (subject !== undefined) newDoc.setSubject(subject);
+    const keywords = src.getKeywords();
+    if (keywords !== undefined) newDoc.setKeywords([keywords]);
+    const creator = src.getCreator();
+    if (creator !== undefined) newDoc.setCreator(creator);
+    const producer = src.getProducer();
+    if (producer !== undefined) newDoc.setProducer(producer);
+    const creationDate = src.getCreationDate();
+    if (creationDate !== undefined) newDoc.setCreationDate(creationDate);
+    const modificationDate = src.getModificationDate();
+    if (modificationDate !== undefined) newDoc.setModificationDate(modificationDate);
     return newDoc;
   }
 
