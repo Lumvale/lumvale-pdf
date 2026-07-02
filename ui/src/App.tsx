@@ -19,6 +19,32 @@ function App() {
     return () => window.removeEventListener('themechange', handleThemeChange);
   }, []);
 
+  // Desktop file association: the Electron main process pushes the bytes of a
+  // PDF the OS asked us to open (double-click / "Open with"). Route it through
+  // the same pipeline as a manual upload.
+  useEffect(() => {
+    const api = (window as { electronAPI?: {
+      onOpenFile?: (cb: (f: { name: string; data: Uint8Array }) => void) => () => void;
+      appReady?: () => void;
+    } }).electronAPI;
+    if (!api?.onOpenFile) return;
+    const unsubscribe = api.onOpenFile(async ({ name, data }) => {
+      try {
+        const file = new File([new Uint8Array(data)], name, { type: 'application/pdf' });
+        const [result] = await processFiles([file], true);
+        if (result) {
+          setPdfData({ name: result.name, bytes: result.bytes, pageCount: result.pageCount });
+        }
+      } catch (err) {
+        console.error('Failed to open associated file', err);
+        alert('Failed to open the file. It may be corrupted or password-protected.');
+      }
+    });
+    // Tell main we're ready for a pending startup file.
+    api.appReady?.();
+    return unsubscribe;
+  }, []);
+
   const handlePdfLoaded = async (name: string, bytes: Uint8Array, pageCount: number) => {
     // Set UI state immediately so we don't block on IndexedDB
     setPdfData({ name, bytes, pageCount });
